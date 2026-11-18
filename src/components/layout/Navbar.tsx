@@ -26,7 +26,7 @@ import { useUI, type ModuleKey } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { inventoryItems } from "@/lib/domain";
 import { CURRENT_USER_ID, materials, members } from "@/data/demo";
-import { Avatar, Kbd, trackSpecular } from "@/components/ui/primitives";
+import { Avatar, Kbd } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 
 export const NAV_ITEMS: { key: ModuleKey; label: string; icon: typeof House; hint: string }[] = [
@@ -103,10 +103,9 @@ export function Navbar() {
                   <Tooltip content={item.hint}>
                     <button
                       onClick={() => navigate(item.key)}
-                      onPointerMove={trackSpecular}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
-                        "specular relative flex h-[54px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-[14px] px-3 text-[12px] font-medium transition-colors duration-150",
+                        "relative flex h-[54px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-[14px] px-3 text-[12px] font-medium transition-colors duration-150",
                         isActive ? "text-white" : "text-ink-2 hover:bg-surface-2/80 hover:text-ink",
                       )}
                     >

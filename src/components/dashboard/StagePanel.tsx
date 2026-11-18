@@ -10,7 +10,7 @@ import { STAGE_STATUS_LABEL, type StageProgress } from "@/lib/domain";
 import { useProjectData } from "@/hooks/useProjectData";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { GlassButton, ProgressBar, trackSpecular } from "@/components/ui/primitives";
+import { GlassButton, ProgressBar } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 
 export const STAGE_ICONS: Record<StageIcon, typeof Compass> = {
@@ -44,9 +44,9 @@ export function StagePanel() {
           <motion.li
             key={stage.id}
             layout
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 * i, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, x: -14, filter: "blur(6px)" }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.8, delay: 0.25 + 0.08 * i, ease: [0.32, 0.72, 0, 1] }}
           >
             <StageCard stage={stage} progress={progressByStage[stage.id]} active={selected === stage.id} onOpen={() => openStage(stage.id)} />
           </motion.li>
@@ -61,11 +61,10 @@ export function StageCard({ stage, progress, active, onOpen }: { stage: Construc
   return (
     <button
       onClick={onOpen}
-      onPointerMove={trackSpecular}
       aria-current={active ? "true" : undefined}
       aria-label={`Etapa ${stage.order}: ${stage.name}. ${STAGE_STATUS_LABEL[progress.status]}. ${progress.done} de ${progress.total} actividades completadas. Abrir detalle.`}
       className={cn(
-        "specular group flex w-full items-center gap-3.5 rounded-[18px] p-3.5 text-left transition-[transform,box-shadow,background-color] duration-200 ease-out hover:-translate-y-px active:scale-[0.99]",
+        "group flex w-full items-center gap-3.5 rounded-[18px] p-3.5 text-left transition-[transform,box-shadow,background-color] duration-200 ease-out hover:-translate-y-px active:scale-[0.99]",
         active ? "glass-brand" : "surface-card hover:shadow-[var(--shadow-lg)]",
       )}
     >

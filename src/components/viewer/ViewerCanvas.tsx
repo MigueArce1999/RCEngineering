@@ -1,6 +1,6 @@
 "use client";
 
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { CameraControls, CameraControlsImpl, Environment, Lightformer } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
@@ -31,36 +31,65 @@ function CameraRig() {
   const viewMode = useUI((s) => s.viewMode);
   const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const width = useThree((s) => s.size.width);
+  // Instancia de controles registrada por makeDefault: los efectos esperan a que exista
+  const hasControls = useThree((s) => !!s.controls);
+  const getState = useThree((s) => s.get);
+  const intro = useRef({ frames: 0, pending: false });
+  const readControls = () => (hasControls ? (getState().controls as unknown as CameraControls) : null);
 
   // Desplaza el encuadre a la izquierda cuando el panel flotante ocupa la derecha del visor
   useEffect(() => {
-    ref.current?.setFocalOffset(width > 760 ? 6.5 : 0, 0, 0, false);
-  }, [width]);
+    readControls()?.setFocalOffset(width > 760 ? 6.5 : 0, 0, 0, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, hasControls]);
 
   // Vistas predefinidas
   useEffect(() => {
-    const c = ref.current;
+    const c = readControls();
     if (!c) return;
     const key = preset.preset === "reset" ? "iso" : preset.preset;
     const [p, t] = CAMERA_PRESETS[key];
     if (preset.preset === "reset") c.zoomTo(1, !reduced);
+    if (preset.nonce === 0 && !reduced) {
+      // Entrada automática: la cámara parte de lo alto y desciende en arco hasta la vista isométrica.
+      // Arranca tras los primeros fotogramas (compilación de shaders) para que no se pierda la transición.
+      c.setLookAt(p[0] * 1.9, p[1] * 3.2, p[2] * 1.5, ...t, false);
+      intro.current = { frames: 0, pending: true };
+      return;
+    }
     c.setLookAt(...p, ...t, preset.nonce > 0 && !reduced);
-  }, [preset, reduced]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset, reduced, hasControls]);
+
+  useFrame((state) => {
+    const it = intro.current;
+    if (!it.pending) return;
+    state.invalidate();
+    if (++it.frames < 4) return;
+    it.pending = false;
+    const c = readControls();
+    if (!c) return;
+    const [p, t] = CAMERA_PRESETS.iso;
+    c.smoothTime = 0.9;
+    c.setLookAt(...p, ...t, true);
+    window.setTimeout(() => (c.smoothTime = 0.32), 2800);
+  });
 
   // Herramienta del puntero: orbitar / desplazar / zoom con el botón principal
   useEffect(() => {
-    const c = ref.current;
+    const c = readControls();
     if (!c) return;
     c.mouseButtons.left = tool === "orbit" ? ACTION.ROTATE : tool === "pan" ? ACTION.TRUCK : ACTION.DOLLY;
     c.touches.one = tool === "orbit" ? ACTION.TOUCH_ROTATE : tool === "pan" ? ACTION.TOUCH_TRUCK : ACTION.DOLLY;
-  }, [tool]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool, hasControls]);
 
   // Encuadrar un elemento seleccionado desde búsqueda o actividades
   useEffect(() => {
     if (!focusNonce) return;
     const id = useUI.getState().selectedElementId;
     const el = id ? ELEMENT_INDEX[id] : null;
-    const c = ref.current;
+    const c = readControls();
     if (!el || !c) return;
     const dy = viewMode === "exploded" ? EXPLODE_OFFSET[el.level] : 0;
     // Conserva la dirección de vista actual y se acerca a una distancia proporcional al elemento
@@ -71,7 +100,8 @@ function CameraRig() {
     const dist = Math.max(14, Math.max(...el.size) * 2.4 + 8);
     const to = center.clone().add(dir.multiplyScalar(dist));
     c.setLookAt(to.x, to.y, to.z, center.x, center.y, center.z, !reduced);
-  }, [focusNonce, viewMode, reduced]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce, viewMode, reduced, hasControls]);
 
   return (
     <CameraControls

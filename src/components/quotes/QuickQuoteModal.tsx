@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 import { asset } from "@/lib/asset";
 import { useMemo, useState } from "react";
 import type { CostCategory, Quote, QuoteAdjustments, QuoteItem } from "@/types";
@@ -94,13 +95,7 @@ function QuoteForm({ onDone }: { onDone: () => void }) {
               <input className={inputCls} value={client} onChange={(e) => setClient(e.target.value)} placeholder="Ej. Constructora del Caribe" />
             </Field>
             <Field label="Proyecto asociado">
-              <select className={inputCls} value={project} onChange={(e) => setProject(e.target.value)}>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} · {p.name}
-                  </option>
-                ))}
-              </select>
+              <Select label="Proyecto asociado" value={project} onChange={setProject} options={projects.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}`, hint: p.hasDemoData ? undefined : "Sin datos de demostración" }))} />
             </Field>
             <Field label="Título" className="sm:col-span-2">
               <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Muro de cerramiento perimetral" />
@@ -197,21 +192,11 @@ export function QuoteItemRow({ item, index, onChange, onRemove }: { item: QuoteI
       <div className="grid grid-cols-2 gap-2 pl-7 sm:grid-cols-[1.25fr_1fr_0.8fr_1.2fr]">
         <label className="text-[11px] text-ink-3">
           Categoría
-          <select className={cn(inputCls, "mt-1 px-2 text-[13px]")} value={item.category} onChange={(e) => onChange({ category: e.target.value as CostCategory })}>
-            {(Object.keys(COST_CATEGORY_LABEL) as CostCategory[]).map((c) => (
-              <option key={c} value={c}>
-                {COST_CATEGORY_LABEL[c]}
-              </option>
-            ))}
-          </select>
+          <Select size="md" className="mt-1 text-[13px]" label={`Categoría ítem ${n}`} value={item.category} onChange={(v) => onChange({ category: v as CostCategory })} options={(Object.keys(COST_CATEGORY_LABEL) as CostCategory[]).map((c) => ({ value: c, label: COST_CATEGORY_LABEL[c] }))} />
         </label>
         <label className="text-[11px] text-ink-3">
           Unidad
-          <select className={cn(inputCls, "mt-1 px-2 text-[13px]")} value={item.unit} onChange={(e) => onChange({ unit: e.target.value as QuoteItem["unit"] })}>
-            {UNITS.map((u) => (
-              <option key={u}>{u}</option>
-            ))}
-          </select>
+          <Select size="md" className="mt-1 text-[13px]" label={`Unidad ítem ${n}`} value={item.unit} onChange={(v) => onChange({ unit: v as QuoteItem["unit"] })} options={UNITS.map((u) => ({ value: u, label: u }))} />
         </label>
         <label className="text-[11px] text-ink-3">
           Cantidad
@@ -366,10 +351,10 @@ function PctInput({ value, onChange, label }: { value: number; onChange: (v: num
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className="flex w-full items-center justify-between gap-3 text-left text-[13px] text-ink-2">
+    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className="group flex w-full items-center justify-between gap-3 text-left text-[13px] text-ink-2 focus-visible:outline-none">
       {label}
-      <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", checked ? "bg-brand" : "bg-line-strong")}>
-        <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", checked ? "left-[18px]" : "left-0.5")} />
+      <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition-colors duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-focus-visible:ring-2 group-focus-visible:ring-accent/50 group-focus-visible:ring-offset-2", checked ? "bg-brand" : "bg-line-strong")}>
+        <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]", checked ? "left-[18px]" : "left-0.5")} />
       </span>
     </button>
   );

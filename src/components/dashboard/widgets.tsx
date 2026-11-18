@@ -13,6 +13,10 @@ import { cn, formatCOP, formatCOPMillions, formatNumber, formatPct, relativeDue 
 import { CardHeader, GlassButton, GlassCard, ProgressBar } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 import { PRIORITY_LABEL } from "./StageDetailDrawer";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+
+const int = (n: number) => String(Math.round(n));
+const pctInt = (n: number) => `${Math.round(n)} %`;
 
 /** Paleta categórica validada (CVD) para la distribución de costos. Orden fijo. */
 export const COST_COLORS = { materials: "#0f6e45", labor: "#4cb886", equipment: "#3170b0", other: "#b07a3a" } as const;
@@ -65,7 +69,7 @@ export function QuoteSummary() {
         action={<CardMenu items={[{ label: "Ver cotizaciones", onSelect: () => open("quotes") }, { label: "Crear cotización", onSelect: () => setQuick(true) }]} />}
       />
       <p className="tabular mt-3 text-[26px] leading-none font-semibold tracking-[-0.02em] text-ink">
-        {formatCOP(sum.total)} <span className="text-[14px] font-medium text-ink-2">COP</span>
+        <AnimatedNumber value={sum.total} format={formatCOP} /> <span className="text-[14px] font-medium text-ink-2">COP</span>
       </p>
       <p className="mt-1.5 text-[12px] text-ink-2">
         {sum.count} cotizaciones · <span className="text-[#13704a]">{sum.approved} aprobadas</span> · {sum.pending} {sum.pending === 1 ? "pendiente" : "pendientes"}{sum.drafts ? ` · ${sum.drafts} ${sum.drafts === 1 ? "borrador" : "borradores"}` : ""}
@@ -88,7 +92,7 @@ export function QuoteSummary() {
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
             <div>
-              <p className="tabular text-[17px] leading-none font-semibold text-ink">{Math.round(sum.approvedShare * 100)} %</p>
+              <p className="tabular text-[17px] leading-none font-semibold text-ink"><AnimatedNumber value={sum.approvedShare * 100} format={pctInt} /></p>
               <p className="mt-1 text-[11px] text-ink-2">aprobado</p>
             </div>
           </div>
@@ -164,7 +168,7 @@ export function InventoryWidget() {
       <div className="mt-2 flex items-end gap-4">
         <div>
           <p className="tabular text-[26px] leading-none font-semibold tracking-[-0.02em] text-ink">
-            {refs} <span className="text-[14px] font-medium text-ink-2">referencias</span>
+            <AnimatedNumber value={refs} format={int} /> <span className="text-[14px] font-medium text-ink-2">referencias</span>
           </p>
           <p className="mt-1.5 text-[12px] text-ink-2">
             {ins} entradas · {outs} salidas
@@ -219,15 +223,15 @@ export function FinanceOverview() {
       <div className="mt-2 flex items-center gap-4">
         <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-2.5">
           <div>
-            <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink">{formatCOPMillions(f.executed)}</dd>
+            <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink"><AnimatedNumber value={f.executed} format={formatCOPMillions} /></dd>
             <dt className="text-[12px] text-ink-2">Ejecutado</dt>
           </div>
           <div>
-            <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink">{formatCOPMillions(f.approvedBudget)}</dd>
+            <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink"><AnimatedNumber value={f.approvedBudget} format={formatCOPMillions} /></dd>
             <dt className="text-[12px] text-ink-2">Presupuestado</dt>
           </div>
           <div>
-            <dd className="tabular text-[14px] font-medium text-ink">{formatCOPMillions(f.available)}</dd>
+            <dd className="tabular text-[14px] font-medium text-ink"><AnimatedNumber value={f.available} format={formatCOPMillions} /></dd>
             <dt className="text-[12px] text-ink-2">Saldo</dt>
           </div>
           <div>
@@ -252,12 +256,12 @@ export function FinanceOverview() {
               strokeDasharray={c}
               initial={{ strokeDashoffset: c }}
               animate={{ strokeDashoffset: c * (1 - f.executionPct) }}
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 1.4, delay: 0.3, ease: [0.32, 0.72, 0, 1] }}
             />
           </svg>
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
-              <p className="tabular text-[14px] leading-none font-semibold text-ink">{Math.round(f.executionPct * 100)} %</p>
+              <p className="tabular text-[14px] leading-none font-semibold text-ink"><AnimatedNumber value={f.executionPct * 100} format={pctInt} /></p>
               <p className="mt-0.5 text-[10px] text-ink-2">Ejecución</p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { Select } from "@/components/ui/Select";
 import { ArrowDown, ArrowUp, Box, Check, ChevronDown, MessageSquare, Pencil, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Priority, Task, TaskStatus } from "@/types";
@@ -352,21 +353,9 @@ function NewTaskForm({ stageId }: { stageId: string }) {
     >
       <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nombre de la actividad" className="h-10 w-full rounded-[12px] border border-line bg-white px-3 text-[14px] outline-none focus:border-accent" aria-label="Nombre de la actividad" />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="h-10 rounded-[12px] border border-line bg-white px-2 text-[13px]" aria-label="Responsable">
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-10 rounded-[12px] border border-line bg-white px-2 text-[13px]" aria-label="Fecha límite" />
-        <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="h-10 rounded-[12px] border border-line bg-white px-2 text-[13px]" aria-label="Prioridad">
-          {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
-            <option key={p} value={p}>
-              Prioridad {PRIORITY_LABEL[p].toLowerCase()}
-            </option>
-          ))}
-        </select>
+        <Select label="Responsable" className="text-[13px]" value={assigneeId} onChange={setAssigneeId} options={members.map((m) => ({ value: m.id, label: m.name, hint: m.role }))} />
+        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-10 rounded-[12px] border border-line bg-white px-3 text-[13px] text-ink outline-none focus:border-accent" aria-label="Fecha límite" />
+        <Select label="Prioridad" className="text-[13px]" value={priority} onChange={(v) => setPriority(v as Priority)} options={(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => ({ value: p, label: `Prioridad ${PRIORITY_LABEL[p].toLowerCase()}` }))} />
       </div>
       <div className="flex justify-end gap-2">
         <GlassButton variant="ghost" size="sm" onClick={() => setOpen(false)}>

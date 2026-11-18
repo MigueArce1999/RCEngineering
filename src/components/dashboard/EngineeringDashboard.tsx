@@ -17,10 +17,21 @@ import { StageDetailDrawer } from "./StageDetailDrawer";
 import { ProjectInfoCard } from "./ProjectInfoCard";
 import { ActivityTimeline, FinanceOverview, InventoryWidget, MaterialsWidget, QuoteSummary } from "./widgets";
 
+// Entrada estilo Apple: aparece desde un leve desenfoque y escala, con frenado largo
+const APPLE = [0.32, 0.72, 0, 1] as const;
+const hidden = { opacity: 0, y: 18, scale: 0.985, filter: "blur(8px)" };
+const shown = { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" };
 const rise = (delay: number) => ({
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] as const },
+  initial: hidden,
+  animate: shown,
+  transition: { duration: 0.9, delay, ease: APPLE },
+});
+/** Igual que rise, pero se dispara al entrar en pantalla al hacer scroll */
+const reveal = (delay: number) => ({
+  initial: hidden,
+  whileInView: shown,
+  viewport: { once: true, amount: 0.08 },
+  transition: { duration: 0.9, delay, ease: APPLE },
 });
 
 /** Centro de control del proyecto: composición principal del Home. */
@@ -31,7 +42,7 @@ export function EngineeringDashboard() {
   }, []);
 
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion="user" transition={{ duration: 0.5, ease: APPLE }}>
       <TooltipProvider>
         <Navbar />
         <main id="inicio" className="mx-auto max-w-[1600px] px-4 pt-6 pb-10 sm:px-6 lg:px-8 lg:pt-8">
@@ -59,17 +70,17 @@ export function EngineeringDashboard() {
 
           {/* Gestión operativa y financiera */}
           <section aria-label="Gestión operativa y financiera" className="mt-6 grid items-start gap-5 md:grid-cols-2 desk:items-stretch desk:grid-cols-[1.05fr_0.95fr_1fr_1.05fr]">
-            <motion.div {...rise(0.15)} className="h-full">
+            <motion.div {...reveal(0)} className="h-full">
               <QuoteSummary />
             </motion.div>
-            <motion.div {...rise(0.2)} className="h-full">
+            <motion.div {...reveal(0.08)} className="h-full">
               <MaterialsWidget />
             </motion.div>
-            <motion.div {...rise(0.25)} className="flex h-full flex-col gap-5">
+            <motion.div {...reveal(0.16)} className="flex h-full flex-col gap-5">
               <InventoryWidget />
               <FinanceOverview />
             </motion.div>
-            <motion.div {...rise(0.3)} className="h-full">
+            <motion.div {...reveal(0.24)} className="h-full">
               <ActivityTimeline />
             </motion.div>
           </section>

@@ -23,7 +23,7 @@ import {
 import { Component, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/format";
 import { useUI, type CameraPreset, type PointerTool, type ViewMode } from "@/stores/uiStore";
-import { GlassButton, Skeleton, trackSpecular } from "@/components/ui/primitives";
+import { GlassButton, Skeleton } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 import { ELEMENT_STATUS_LABEL } from "@/lib/domain";
 import { ProjectInfoCard } from "@/components/dashboard/ProjectInfoCard";
@@ -134,7 +134,10 @@ export function ArchitecturalViewer() {
         immersive ? "fixed inset-0 z-[45] bg-[#eef3f0]/80 p-2 backdrop-blur-xl sm:p-3" : "relative h-full min-h-[440px]",
       )}
     >
-      <section
+      <motion.section
+        initial={{ opacity: 0, scale: 0.97, filter: "blur(10px)" }}
+        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+        transition={{ duration: 1.1, delay: 0.12, ease: [0.32, 0.72, 0, 1] }}
         aria-label="Visualizador arquitectónico 3D"
         className="viewer-backdrop relative h-full w-full overflow-hidden rounded-[28px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.7),var(--shadow-md)]"
         onPointerDown={() => setInteracted(true)}
@@ -195,12 +198,12 @@ export function ArchitecturalViewer() {
         <div className={cn("pointer-events-none absolute top-[76px] right-3 hidden w-[356px] flex-col gap-3 sm:right-4 md:flex", immersive ? "bottom-16" : "bottom-3 sm:bottom-4")}>
           <AnimatePresence mode="popLayout">
             {showInfo && (
-              <motion.div key="info" className="pointer-events-auto" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.22 }}>
+              <motion.div key="info" className="pointer-events-auto" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}>
                 <ProjectInfoCard />
               </motion.div>
             )}
             {showInspector && (
-              <motion.div key="inspector" className="pointer-events-auto min-h-0" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.22 }}>
+              <motion.div key="inspector" className="pointer-events-auto min-h-0" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}>
                 <ElementInspector />
               </motion.div>
             )}
@@ -257,7 +260,7 @@ export function ArchitecturalViewer() {
             </GlassButton>
           </div>
         )}
-      </section>
+      </motion.section>
     </div>
   );
 }
@@ -278,7 +281,6 @@ function PointerTools() {
             role="radio"
             aria-checked={tool === t.key}
             onClick={() => setTool(t.key)}
-            onPointerMove={trackSpecular}
             className={cn(
               "flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition",
               tool === t.key ? "bg-white text-ink shadow-[var(--shadow-sm)]" : "text-ink-2 hover:text-ink",

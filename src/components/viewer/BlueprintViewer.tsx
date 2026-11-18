@@ -1,6 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { Select } from "@/components/ui/Select";
 import { asset } from "@/lib/asset";
 import { Maximize2, Minus, Plus, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
@@ -129,13 +130,7 @@ export function BlueprintViewer() {
           {/* Área de visualización */}
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="flex flex-wrap items-center gap-2 border-b border-line/70 px-4 py-3">
-              <select value={doc.id} onChange={(e) => selectDoc(e.target.value)} className="h-9 max-w-[280px] rounded-full border border-line bg-white px-3 text-[13px] text-ink" aria-label="Documento">
-                {blueprints.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.code} · {b.title}
-                  </option>
-                ))}
-              </select>
+              <Select size="sm" className="w-[280px] max-w-full rounded-full" label="Documento" value={doc.id} onChange={selectDoc} options={blueprints.map((b) => ({ value: b.id, label: `${b.code} · ${b.title}` }))} />
               <div className="flex rounded-full bg-surface-2 p-1" role="radiogroup" aria-label="Nivel">
                 {LEVELS.map((l) => (
                   <button key={l} role="radio" aria-checked={level === l} onClick={() => setLevel(l)} className={cn("h-7 rounded-full px-2.5 text-[12px] font-medium transition", level === l ? "bg-white text-ink shadow-[var(--shadow-sm)]" : "text-ink-2 hover:text-ink")}>

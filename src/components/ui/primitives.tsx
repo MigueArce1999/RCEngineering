@@ -1,15 +1,8 @@
 "use client";
 
-import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type PointerEvent, type ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/format";
-
-/** Actualiza --mx/--my para el reflejo especular que sigue al cursor. */
-export function trackSpecular(e: PointerEvent<HTMLElement>) {
-  const r = e.currentTarget.getBoundingClientRect();
-  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
-  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
-}
 
 // ── GlassCard ───────────────────────────────────────────────────────────
 interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
@@ -41,8 +34,8 @@ interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: "glass-brand specular hover:brightness-[1.06]",
-  glass: "glass specular text-ink hover:bg-white/80",
+  primary: "glass-brand",
+  glass: "glass text-ink hover:bg-white",
   ghost: "text-ink-2 hover:text-ink hover:bg-surface-2",
   outline: "bg-white text-ink border border-line hover:border-line-strong hover:bg-surface-2/60 shadow-[var(--shadow-xs)]",
   danger: "bg-danger-soft text-danger hover:bg-[#f4d6d6]",
@@ -57,19 +50,15 @@ const sizeClass: Record<ButtonSize, string> = {
 };
 
 export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(function GlassButton(
-  { variant = "glass", size = "md", icon, trailing, className, children, onPointerMove, type = "button", ...rest },
+  { variant = "glass", size = "md", icon, trailing, className, children, type = "button", ...rest },
   ref,
 ) {
   return (
     <button
       ref={ref}
       type={type}
-      onPointerMove={(e) => {
-        trackSpecular(e);
-        onPointerMove?.(e);
-      }}
       className={cn(
-        "inline-flex select-none items-center font-medium whitespace-nowrap transition-[transform,filter,background-color,border-color,color,box-shadow] duration-150 ease-out active:scale-[0.97] disabled:pointer-events-none disabled:opacity-45",
+        "inline-flex select-none items-center font-medium whitespace-nowrap transition-[transform,background-color,border-color,color,box-shadow] duration-[240ms] ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-px active:translate-y-0 active:scale-[0.96] active:duration-100 disabled:pointer-events-none disabled:opacity-45",
         variantClass[variant],
         sizeClass[size],
         className,
@@ -100,7 +89,7 @@ export function ProgressBar({
   const v = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
   const fill = {
     brand: "progress-fill",
-    light: "bg-gradient-to-r from-[#7fd3a9] to-[#bff0d5]",
+    light: "bg-[#8fdcb6]",
     warning: "bg-warning",
     danger: "bg-danger",
   }[tone];
@@ -118,7 +107,7 @@ export function ProgressBar({
         className={cn("h-full rounded-full", fill)}
         initial={{ width: 0 }}
         animate={{ width: `${v * 100}%` }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 1.1, ease: [0.32, 0.72, 0, 1], delay: 0.35 }}
         style={{ minWidth: v > 0 ? height : 0 }}
       />
     </div>
@@ -183,7 +172,7 @@ export function Kbd({ children }: { children: ReactNode }) {
 export function Avatar({ initials, size = 28, className }: { initials: string; size?: number; className?: string }) {
   return (
     <span
-      className={cn("inline-grid shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#e8f1ec] to-[#d5e4dc] font-semibold text-brand ring-1 ring-white", className)}
+      className={cn("inline-grid shrink-0 place-items-center rounded-full bg-[#e2ece6] font-semibold text-brand ring-1 ring-white", className)}
       style={{ width: size, height: size, fontSize: size * 0.38 }}
       aria-hidden
     >

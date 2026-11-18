@@ -6,6 +6,7 @@ import { useProjectData } from "@/hooks/useProjectData";
 import { useUI } from "@/stores/uiStore";
 import { STAGE_STATUS_LABEL } from "@/lib/domain";
 import { formatNumber, formatPct } from "@/lib/format";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { GlassCard, ProgressBar, StatusBadge } from "@/components/ui/primitives";
 
 /** Tarjeta flotante de cristal con la ficha del proyecto activo (sobre el visor 3D). */
@@ -40,7 +41,7 @@ export function ProjectInfoCard() {
       <div className="px-5 pb-1">
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-ink">Avance físico general</span>
-          <span className="tabular font-semibold text-ink">{formatPct(overall)}</span>
+          <span className="tabular font-semibold text-ink"><AnimatedNumber value={overall} format={formatPct} /></span>
         </div>
         <ProgressBar value={overall} className="mt-2" label="Avance físico general" />
       </div>
