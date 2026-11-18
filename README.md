@@ -43,17 +43,28 @@ modo local con los datos de demostración.
 
 - Esquema: `supabase/migrations/` (tablas, RLS y privilegios). Datos demo: `supabase/seed.sql`
   (se regenera con `npx tsx scripts/build-seed.ts`).
-- **Permisos**: cualquiera puede ver. Para editar (actividades, notas, etapas, cotizaciones)
-  hay que iniciar sesión **y** estar en la tabla `public.editors`.
+- **Acceso**: la app abre en la pantalla de inicio de sesión / creación de cuenta. Sin sesión no se
+  ven datos (lo exige la base de datos con RLS).
 
-### Dar acceso de edición a una persona
-1. Supabase → **Authentication → Users → Add user → Create new user**: correo y contraseña
-   (marca *Auto Confirm User*).
-2. Supabase → **SQL Editor** → ejecutar:
-   `insert into public.editors (email) values ('correo@empresa.com');`
-3. La persona entra desde el avatar (arriba a la derecha) → **Iniciar sesión**.
+### Roles
 
-Para quitar el acceso: `delete from public.editors where email = 'correo@empresa.com';`
+| Rol | Ver | Actividades | Etapas | Cotizaciones | Usuarios |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Administrador | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Director de proyecto | ✓ | ✓ | ✓ | ✓ | |
+| Ingeniero / Residente | ✓ | ✓ | | | |
+| Presupuestos | ✓ | | | ✓ | |
+| Consulta (rol inicial) | ✓ | | | | |
+
+Roles y permisos viven en las tablas `roles`, `permissions` y `role_permissions`. Un administrador
+asigna roles desde **avatar → Usuarios y roles** (función `set_user_role`; nadie cambia su propio rol).
+El primer administrador se define en `public.admin_bootstrap` (correo que recibe el rol al registrarse,
+uso único) desde el SQL Editor; esa tabla no es accesible desde la app.
+
+### Configuración necesaria en Supabase (enlaces de correo)
+**Authentication → URL Configuration**:
+- *Site URL*: `https://miguearce1999.github.io/RCEngineering/`
+- *Redirect URLs*: agregar `https://miguearce1999.github.io/RCEngineering/` y `http://localhost:3000/`
 
 ## Stack
 
@@ -124,7 +135,7 @@ consultas con los mismos tipos de `types/`.
 - **Modelo 3D procedural**: construido con geometría paramétrica (no es un GLB fotorrealista). Ver
   [docs/3D-MODELO.md](docs/3D-MODELO.md) para sustituirlo por GLB/IFC conservando los vínculos.
 - Instalaciones eléctricas/hidrosanitarias en 3D, DWG/DXF/IFC: pendientes (requieren BIM y librerías específicas).
-- Las cuentas se crean desde el panel de Supabase (no hay registro público ni recuperación de contraseña en la app).
+- Los Términos de uso y la Política de privacidad son borradores pendientes de revisión legal.
 - Materiales, inventario, gastos y planos se leen de Supabase pero aún no se editan desde la app.
 - Solo RC-001 tiene datos; RC-002 y RC-003 aparecen como “sin datos”.
 - Costos de elementos 3D son paramétricos de demostración, no APU aprobados.

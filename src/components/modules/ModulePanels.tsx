@@ -9,6 +9,7 @@ import { useProjectData } from "@/hooks/useProjectData";
 import { DEMO_BASE_DATE } from "@/data/demo";
 import { useCatalog } from "@/hooks/useCatalog";
 import { useAuth } from "@/stores/authStore";
+import { UsersPanel } from "./UsersPanel";
 import { COST_CATEGORY_LABEL, STAGE_STATUS_LABEL, inventoryItems, quoteTotals } from "@/lib/domain";
 import { cn, formatCOP, formatDate, formatNumber, formatPct } from "@/lib/format";
 import { Drawer, Modal } from "@/components/ui/overlays";
@@ -67,6 +68,7 @@ export function ModulePanels() {
       <MaterialDetailModal />
       <ProjectDetailModal />
       <SettingsModal />
+      <UsersPanel />
     </>
   );
 }
@@ -423,11 +425,11 @@ function SettingsModal() {
   const source = useProjectStore((s) => s.source);
   const reload = useProjectStore((s) => s.load);
   const toast = useUI((s) => s.toast);
-  const email = useAuth((s) => s.email);
-  const isEditor = useAuth((s) => s.isEditor);
+  const email = useAuth((s) => s.session?.user.email ?? null);
+  const roleName = useAuth((s) => s.profile?.roleName);
   const remote = source === "remote";
   return (
-    <Modal open={open} onOpenChange={setOpen} title="Configuración" description={remote ? (email ? `${email} · ${isEditor ? "editor" : "solo lectura"}` : "Invitado · solo lectura") : "Modo local"} width={520}>
+    <Modal open={open} onOpenChange={setOpen} title="Configuración" description={remote ? `${email ?? ""}${roleName ? ` · ${roleName}` : ""}` : "Modo local"} width={520}>
       <div className="space-y-5">
         <div>
           <p className="text-[13px] font-semibold text-ink">Calidad del visor 3D</p>

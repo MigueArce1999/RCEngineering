@@ -19,9 +19,9 @@ import {
   Settings,
   RotateCcw,
   Menu,
-  LogIn,
   LogOut,
   User,
+  Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn, relativeDue } from "@/lib/format";
@@ -29,7 +29,7 @@ import { useUI, type ModuleKey } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { inventoryItems } from "@/lib/domain";
 import { useCatalog } from "@/hooks/useCatalog";
-import { useAuth } from "@/stores/authStore";
+import { useAuth, useCan } from "@/stores/authStore";
 import { Avatar, Kbd } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 
@@ -240,39 +240,36 @@ function Notifications() {
 
 function ProfileMenu() {
   const setSettingsOpen = useUI((s) => s.setSettingsOpen);
+  const openModule = useUI((s) => s.openModule);
   const resetDemo = useProjectStore((s) => s.resetDemo);
-  const source = useProjectStore((s) => s.source);
+  const remote = useProjectStore((s) => s.source === "remote");
   const toast = useUI((s) => s.toast);
-  const email = useAuth((s) => s.email);
-  const isEditor = useAuth((s) => s.isEditor);
-  const setLoginOpen = useAuth((s) => s.setLoginOpen);
+  const profile = useAuth((s) => s.profile);
+  const email = useAuth((s) => s.session?.user.email ?? null);
   const signOut = useAuth((s) => s.signOut);
-  const remote = source === "remote";
-  const initials = email ? email.slice(0, 2).toUpperCase() : remote ? "" : "RC";
+  const canManageUsers = useCan("users.manage");
+  const fullName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : "";
+  const initials = remote
+    ? ((profile?.firstName?.[0] ?? "") + (profile?.lastName?.[0] ?? "")).toUpperCase() || (email ?? "").slice(0, 2).toUpperCase()
+    : "RC";
   const itemCls = "flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-2";
 
   return (
     <Dropdown.Root>
       <Dropdown.Trigger asChild>
-        <button className="rounded-full ring-2 ring-white shadow-[var(--shadow-sm)] transition hover:ring-accent/40" aria-label={email ? `Cuenta de ${email}` : "Cuenta"}>
+        <button className="rounded-full ring-2 ring-white shadow-[var(--shadow-sm)] transition hover:ring-accent/40" aria-label={fullName ? `Cuenta de ${fullName}` : "Cuenta"}>
           {initials ? <Avatar initials={initials} size={40} /> : <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e2ece6] text-brand"><User size={18} /></span>}
         </button>
       </Dropdown.Trigger>
       <Dropdown.Portal>
-        <Dropdown.Content align="end" sideOffset={10} className="anim-pop glass-float z-50 w-64 rounded-[18px] p-1.5">
+        <Dropdown.Content align="end" sideOffset={10} className="anim-pop glass-float z-50 w-72 rounded-[18px] p-1.5">
           <div className="px-3 py-2.5">
             {remote ? (
-              email ? (
-                <>
-                  <p className="truncate text-[14px] font-semibold text-ink">{email}</p>
-                  <p className="text-[12px] text-ink-2">{isEditor ? "Editor del proyecto" : "Solo lectura · sin permisos de edición"}</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-[14px] font-semibold text-ink">Invitado</p>
-                  <p className="text-[12px] text-ink-2">Modo consulta · inicia sesión para editar</p>
-                </>
-              )
+              <>
+                <p className="truncate text-[14px] font-semibold text-ink">{fullName || email}</p>
+                {fullName && <p className="truncate text-[12px] text-ink-2">{email}</p>}
+                {profile && <span className="mt-2 inline-flex h-6 items-center rounded-full bg-accent-soft px-2.5 text-[12px] font-medium text-[#13704a]">{profile.roleName}</span>}
+              </>
             ) : (
               <>
                 <p className="text-[14px] font-semibold text-ink">Modo local</p>
@@ -281,9 +278,9 @@ function ProfileMenu() {
             )}
           </div>
           <div className="hairline my-1" />
-          {remote && !email && (
-            <Dropdown.Item onSelect={() => setLoginOpen(true)} className={itemCls}>
-              <LogIn size={16} /> Iniciar sesión
+          {remote && canManageUsers && (
+            <Dropdown.Item onSelect={() => openModule("users")} className={itemCls}>
+              <Users size={16} /> Usuarios y roles
             </Dropdown.Item>
           )}
           <Dropdown.Item onSelect={() => setSettingsOpen(true)} className={itemCls}>
@@ -300,14 +297,8 @@ function ProfileMenu() {
               <RotateCcw size={16} /> Restablecer demo
             </Dropdown.Item>
           )}
-          {remote && email && (
-            <Dropdown.Item
-              onSelect={async () => {
-                await signOut();
-                toast({ title: "Sesión cerrada", tone: "info" });
-              }}
-              className={itemCls}
-            >
+          {remote && (
+            <Dropdown.Item onSelect={() => void signOut()} className={itemCls}>
               <LogOut size={16} /> Cerrar sesión
             </Dropdown.Item>
           )}

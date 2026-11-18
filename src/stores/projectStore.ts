@@ -20,7 +20,7 @@ import { buildDemoTasks } from "@/data/tasks";
 import { uid } from "@/lib/format";
 import { isRemote } from "@/lib/supabase";
 import * as api from "@/lib/api";
-import { canEdit, useAuth } from "./authStore";
+import { can, useAuth, type Permission } from "./authStore";
 import { useUI } from "./uiStore";
 
 /**
@@ -86,16 +86,23 @@ const initial = () => ({
 // En modo remoto no se escribe nada en localStorage: la fuente de verdad es Supabase.
 const noopStorage: StateStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
-/** Bloquea la edición si no hay permiso y abre el inicio de sesión. */
-function guard() {
-  if (canEdit()) return true;
-  const auth = useAuth.getState();
+const PERM_LABEL: Record<Permission, string> = {
+  "project.view": "ver el proyecto",
+  "tasks.edit": "gestionar actividades",
+  "stages.manage": "gestionar etapas",
+  "quotes.manage": "gestionar cotizaciones",
+  "users.manage": "gestionar usuarios",
+};
+
+/** Bloquea la acción si el rol del usuario no tiene el permiso y lo explica. */
+function guard(perm: Permission) {
+  if (can(perm)) return true;
+  const role = useAuth.getState().profile?.roleName ?? "actual";
   useUI.getState().toast({
-    title: auth.session ? "Tu cuenta no tiene permisos de edición" : "Inicia sesión para editar",
-    description: auth.session ? "Pide a un administrador que agregue tu correo a los editores." : "Puedes consultar todo; para modificar datos necesitas una cuenta autorizada.",
+    title: `Tu rol (${role}) no permite ${PERM_LABEL[perm]}`,
+    description: "Pide a un administrador que te asigne un rol con ese permiso.",
     tone: "info",
   });
-  if (!auth.session) auth.setLoginOpen(true);
   return false;
 }
 
@@ -129,7 +136,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         setTaskStatus: (taskId, status) => {
-          if (!guard()) return false;
+          if (!guard("tasks.edit")) return false;
           set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) }));
           remote("estado de la actividad", () => api.updateTaskStatus(taskId, status));
           return true;
@@ -142,7 +149,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         addTaskNote: (taskId, text) => {
-          if (!guard()) return false;
+          if (!guard("tasks.edit")) return false;
           const note: TaskNote = { id: uid("note"), text, createdAt: new Date().toISOString(), authorId: "" };
           set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, notes: [...t.notes, note] } : t)) }));
           remote("observación", () => api.insertTaskNote(taskId, note));
@@ -150,7 +157,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         addTask: (stageId, input) => {
-          if (!guard()) return null;
+          if (!guard("tasks.edit")) return null;
           const task: Task = { id: uid("tsk"), stageId, status: "pending", notes: [], elementIds: [], category: "Personalizada", ...input };
           set((s) => ({ tasks: [...s.tasks, task] }));
           const order = get().tasks.filter((t) => t.stageId === stageId).length + 10_000;
@@ -159,14 +166,14 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         renameStage: (stageId, name) => {
-          if (!guard()) return false;
+          if (!guard("stages.manage")) return false;
           set((s) => ({ stages: s.stages.map((st) => (st.id === stageId ? { ...st, name } : st)) }));
           remote("nombre de la etapa", () => api.upsertStages(get().stages.filter((s) => s.id === stageId)));
           return true;
         },
 
         moveStage: (stageId, direction) => {
-          if (!guard()) return false;
+          if (!guard("stages.manage")) return false;
           const sorted = [...get().stages].sort((a, b) => a.order - b.order);
           const i = sorted.findIndex((s) => s.id === stageId);
           const j = i + direction;
@@ -179,7 +186,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         addStage: (name) => {
-          if (!guard()) return null;
+          if (!guard("stages.manage")) return null;
           const stage: ConstructionStage = { id: uid("stg"), projectId: get().projectId, order: get().stages.length + 1, name, icon: "generic", weight: 0.1 };
           set((s) => ({ stages: [...s.stages, stage] }));
           remote("etapa", () => api.upsertStages([stage]));
@@ -187,7 +194,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         saveQuote: (quote) => {
-          if (!guard()) return false;
+          if (!guard("quotes.manage")) return false;
           set((s) => {
             const exists = s.quotes.some((q) => q.id === quote.id);
             return { quotes: exists ? s.quotes.map((q) => (q.id === quote.id ? quote : q)) : [...s.quotes, quote] };

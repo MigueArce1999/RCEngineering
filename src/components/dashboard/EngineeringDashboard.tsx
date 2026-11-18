@@ -12,7 +12,8 @@ import { ModulePanels } from "@/components/modules/ModulePanels";
 import { Toaster, TooltipProvider } from "@/components/ui/overlays";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAuth } from "@/stores/authStore";
-import { LoginModal } from "@/components/layout/LoginModal";
+import { asset } from "@/lib/asset";
+import { AuthScreen } from "@/components/auth/AuthScreen";
 import { SyncStatus } from "@/components/layout/SyncStatus";
 import { DEMO_NOTICE } from "@/data/demo";
 import { StagePanel } from "./StagePanel";
@@ -37,16 +38,42 @@ const reveal = (delay: number) => ({
   transition: { duration: 0.9, delay, ease: APPLE },
 });
 
-/** Centro de control del proyecto: composición principal del Home. */
+/**
+ * Entrada de la app: con Supabase exige sesión (pantalla de acceso) antes del dashboard.
+ * Sin Supabase (modo local) muestra el dashboard directamente.
+ */
 export function EngineeringDashboard() {
+  const remote = useProjectStore((s) => s.source === "remote");
+  const ready = useAuth((s) => s.ready);
+  const session = useAuth((s) => s.session);
+  const recovery = useAuth((s) => s.recovery);
+
+  useEffect(() => (remote ? useAuth.getState().init() : undefined), [remote]);
+
+  if (!remote) return <Dashboard />;
+  if (!ready) return <Splash />;
+  if (recovery) return <AuthScreen key="reset" initialMode="reset" />;
+  if (!session) return <AuthScreen key="auth" />;
+  return <Dashboard key={session.user.id} />;
+}
+
+function Splash() {
+  return (
+    <div className="grid min-h-dvh place-items-center bg-bg" aria-busy="true" aria-label="Cargando">
+      <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, ease: APPLE }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={asset("/branding/rc-isotype.svg")} alt="RC Engineering" className="h-12 w-auto animate-pulse" />
+      </motion.div>
+    </div>
+  );
+}
+
+/** Centro de control del proyecto: composición principal del Home. */
+function Dashboard() {
   // Rehidratar el estado persistido después del primer render (evita desajustes SSR)
   useEffect(() => {
-    if (useProjectStore.getState().source === "local") {
-      void useProjectStore.persist.rehydrate();
-      return;
-    }
-    void useProjectStore.getState().load();
-    return useAuth.getState().init();
+    if (useProjectStore.getState().source === "local") void useProjectStore.persist.rehydrate();
+    else void useProjectStore.getState().load();
   }, []);
 
   return (
@@ -107,7 +134,6 @@ export function EngineeringDashboard() {
         <BlueprintViewer />
         <ModulePanels />
         <SearchCommand />
-        <LoginModal />
         <Toaster />
       </TooltipProvider>
     </MotionConfig>

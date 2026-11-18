@@ -11,7 +11,7 @@ export function SyncStatus({ className }: { className?: string }) {
   const state = useProjectStore((s) => s.loadState);
   const error = useProjectStore((s) => s.loadError);
   const reload = useProjectStore((s) => s.load);
-  const isEditor = useAuth((s) => s.isEditor);
+  const role = useAuth((s) => s.profile?.roleName);
 
   if (source === "local")
     return (
@@ -33,7 +33,7 @@ export function SyncStatus({ className }: { className?: string }) {
     );
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
-      <Database size={13} className="text-accent" /> Supabase · {isEditor ? "edición habilitada" : "solo lectura"}
+      <Database size={13} className="text-accent" /> Supabase · {role ? `Rol: ${role}` : "sincronizado"}
     </span>
   );
 }
