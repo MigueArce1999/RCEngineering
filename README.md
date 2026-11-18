@@ -4,14 +4,13 @@ Primera versión del **Engineering Operating System** de RC Engineering & Techno
 un centro de control donde la maqueta 3D de la obra, las etapas constructivas, las actividades,
 las cotizaciones, los materiales, el inventario y las finanzas comparten los mismos datos.
 
-> Proyecto independiente dentro del repositorio. No modifica ni depende de la app GrowDesk (`/app`).
-
 ![Home 1440×900](docs/screenshots/home-1440x900.png)
 
 ## Ejecutar
 
 ```bash
-cd rc-engineering
+git clone https://github.com/MigueArce1999/RCEngineering.git
+cd RCEngineering
 npm install
 npm run dev            # http://localhost:3000
 ```
