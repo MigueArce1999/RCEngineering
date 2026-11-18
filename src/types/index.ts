@@ -22,8 +22,13 @@ export interface Project {
   status: ProjectStatus;
   startDate: ISODate;
   plannedEndDate: ISODate;
-  /** true si el proyecto tiene datos de demostración cargados en esta versión */
+  /** true si el proyecto tiene datos cargados (en modo demo, solo RC-001) */
   hasDemoData: boolean;
+  clientName?: string;
+  description?: string;
+  currency?: string;
+  /** Pasos opcionales del asistente marcados como "no aplica" */
+  setupSkipped?: string[];
 }
 
 export type StageIcon = "survey" | "design" | "build" | "finish" | "generic";
@@ -68,6 +73,7 @@ export interface Task {
 
 export interface ProjectMember {
   id: ID;
+  projectId?: ID;
   name: string;
   role: string;
   initials: string;

@@ -15,6 +15,7 @@ import { CardHeader, GlassButton, GlassCard, ProgressBar } from "@/components/ui
 import { Tooltip } from "@/components/ui/overlays";
 import { PRIORITY_LABEL } from "./StageDetailDrawer";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { SetupEmpty } from "@/components/setup/SetupEmpty";
 
 const int = (n: number) => String(Math.round(n));
 const pctInt = (n: number) => `${Math.round(n)} %`;
@@ -119,6 +120,7 @@ export function QuoteSummary() {
 export function MaterialsWidget() {
   const { materials } = useCatalog();
   const setMaterialDetailId = useUI((s) => s.setMaterialDetailId);
+  // En la demo se omite la grava para mantener la tarjeta compacta
   const list = materials.filter((m) => m.id !== "mat-gra");
   return (
     <Widget>
@@ -128,6 +130,7 @@ export function MaterialsWidget() {
         action={<CardMenu items={[{ label: "Ver todos los materiales", onSelect: () => open("materials") }, { label: "Ver inventario", onSelect: () => open("inventory") }]} />}
       />
       <p className="mt-1 text-[12px] text-ink-2">Recibido en obra frente a la cantidad prevista</p>
+      {list.length === 0 && <SetupEmpty text="Sin materiales registrados." step="inventory" action="Agregar materiales" />}
       <ul className="mt-3 space-y-1">
         {list.map((m) => {
           const share = m.plannedQty ? m.receivedQty / m.plannedQty : 0;
@@ -221,6 +224,13 @@ export function FinanceOverview() {
   const r = 30;
   const c = 2 * Math.PI * r;
   const over = f.deviationPct > 0;
+  if (!f.approvedBudget)
+    return (
+      <Widget fill={false} className="flex-1">
+        <CardHeader icon={<ChartColumn size={20} strokeWidth={1.7} />} title="Panorama financiero" />
+        <SetupEmpty text="Define el presupuesto aprobado para medir la ejecución financiera." step="budget" action="Definir presupuesto" />
+      </Widget>
+    );
   return (
     <Widget fill={false} className="flex-1">
       <CardHeader icon={<ChartColumn size={20} strokeWidth={1.7} />} title="Panorama financiero" action={<CardMenu items={[{ label: "Ver finanzas", onSelect: () => open("finance") }]} />} />
@@ -301,7 +311,8 @@ export function ActivityTimeline() {
         title="Actividad pendiente"
         action={<CardMenu items={[{ label: "Ver actividades de la etapa actual", onSelect: () => upcoming[0] && openStage(upcoming[0].stageId) }]} />}
       />
-      <ol className="relative mt-3 flex-1">
+      {upcoming.length === 0 && <SetupEmpty text="No hay actividades pendientes." step="tasks" action="Agregar actividades" />}
+      <ol className={cn("relative mt-3 flex-1", upcoming.length === 0 && "hidden")}>
         <span className="absolute top-3 bottom-3 left-[11px] w-px bg-line" aria-hidden />
         <AnimatePresence initial={false}>
           {upcoming.map((t) => {

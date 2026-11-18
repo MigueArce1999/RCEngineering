@@ -11,6 +11,7 @@ import {
   Columns3,
   Expand,
   Hand,
+  Info,
   Layers,
   Map,
   Maximize2,
@@ -27,6 +28,7 @@ import { GlassButton, Skeleton } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 import { ELEMENT_STATUS_LABEL } from "@/lib/domain";
 import { ProjectInfoCard } from "@/components/dashboard/ProjectInfoCard";
+import { useProjectStore } from "@/stores/projectStore";
 import { ElementInspector } from "./ElementInspector";
 
 const ViewerCanvas = dynamic(() => import("./ViewerCanvas"), { ssr: false, loading: () => <ViewerLoading /> });
@@ -86,6 +88,7 @@ export function ArchitecturalViewer() {
   const focusNonce = useUI((s) => s.focusElementNonce);
   const openBlueprints = useUI((s) => s.openBlueprints);
   const goToCamera = useUI((s) => s.goToCamera);
+  const remote = useProjectStore((s) => s.source === "remote");
   const webgl = useSyncExternalStore(noopSubscribe, detectWebGL, () => true);
   const rootRef = useRef<HTMLDivElement>(null);
   const [interacted, setInteracted] = useState(false);
@@ -234,6 +237,15 @@ export function ArchitecturalViewer() {
             </Tooltip>
           </div>
         </div>
+
+        {/* En proyectos reales el modelo es de referencia hasta cargar el GLB/IFC propio */}
+        {remote && (
+          <div className="pointer-events-none absolute top-[64px] left-3 sm:top-[68px] sm:left-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1 text-[12px] font-medium text-[#7c5314] shadow-[var(--shadow-xs)]">
+              <Info size={13} /> Modelo de referencia · aún no hay modelo 3D de este proyecto
+            </span>
+          </div>
+        )}
 
         {/* Ayuda contextual */}
         <AnimatePresence>

@@ -54,7 +54,7 @@ function QuoteForm({ onDone }: { onDone: () => void }) {
   const [touched, setTouched] = useState(false);
 
   const totals = useMemo(() => quoteTotals(items, adj), [items, adj]);
-  const code = `COT-${new Date().getFullYear()}-${String(quotes.length + 14 + 1).padStart(3, "0")}`;
+  const code = `COT-${new Date().getFullYear()}-${String(quotes.length + 1).padStart(3, "0")}`;
   const validItems = items.filter((i) => i.description.trim() && i.quantity > 0);
   const errors = {
     client: !client.trim() ? "Ingresa el nombre del cliente" : "",

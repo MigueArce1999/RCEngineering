@@ -71,6 +71,10 @@ export function navigateTo(key: ModuleKey) {
         window.scrollTo({ top: 0, behavior: "smooth" });
         break;
       case "blueprints":
+        if (!useProjectStore.getState().blueprints.length) {
+          ui.toast({ title: "Este proyecto aún no tiene planos", description: "La carga de planos (PDF/imagen) llegará en el siguiente paso del producto.", tone: "info" });
+          break;
+        }
         ui.openBlueprints();
         break;
       case "viewer3d":

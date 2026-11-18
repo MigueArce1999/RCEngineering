@@ -62,6 +62,23 @@ interface ProjectState extends Catalog {
 
   saveQuote: (quote: Quote) => boolean;
   resetDemo: () => void;
+
+  // ── Proyectos reales y asistente de configuración ──
+  selectProject: (id: string) => Promise<void>;
+  createProject: (input: api.ProjectInput) => Promise<string | null>;
+  updateProject: (input: api.ProjectInput) => Promise<boolean>;
+  setStepSkipped: (step: string, skipped: boolean) => Promise<boolean>;
+  addMember: (input: { name: string; role: string }) => Promise<boolean>;
+  removeMember: (id: string) => Promise<boolean>;
+  saveStages: (stages: ConstructionStage[]) => Promise<boolean>;
+  removeStage: (id: string) => Promise<boolean>;
+  removeTask: (id: string) => Promise<boolean>;
+  setBudget: (amount: number) => Promise<boolean>;
+  addExpense: (input: Omit<Expense, "id">) => Promise<boolean>;
+  removeExpense: (id: string) => Promise<boolean>;
+  addMaterial: (input: Omit<Material, "id" | "receivedQty" | "consumedQty">, initialReceived: number) => Promise<boolean>;
+  removeMaterial: (id: string) => Promise<boolean>;
+  addMovement: (input: Omit<InventoryMovement, "id">) => Promise<boolean>;
 }
 
 const demoCatalog = (): Catalog => ({
@@ -75,19 +92,52 @@ const demoCatalog = (): Catalog => ({
   approvedBudget: demo.APPROVED_BUDGET,
 });
 
-const initial = () => ({
-  projectId: "prj-rc-001",
-  stages: demo.stages,
-  tasks: buildDemoTasks(),
-  quotes: demo.quotes,
-  ...demoCatalog(),
-});
+const initial = () =>
+  isRemote
+    ? // Con Supabase se arranca vacío: los datos reales llegan en load()
+      { projectId: "", ...api.emptyBundle() }
+    : {
+        projectId: "prj-rc-001",
+        stages: demo.stages,
+        tasks: buildDemoTasks(),
+        quotes: demo.quotes,
+        ...demoCatalog(),
+      };
+
+const ACTIVE_KEY = "rc-eos-active-project";
+const readActive = () => {
+  try {
+    return localStorage.getItem(ACTIVE_KEY);
+  } catch {
+    return null;
+  }
+};
+const writeActive = (id: string) => {
+  try {
+    localStorage.setItem(ACTIVE_KEY, id);
+  } catch {
+    /* almacenamiento no disponible */
+  }
+};
+
+/** Iniciales a partir del nombre ("Camila Restrepo" → "CR"). */
+const initialsOf = (name: string) =>
+  name
+    .replace(/^(ing|arq|téc|tec|m\.?\s?o)\.?\s+/i, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("") || "?";
 
 // En modo remoto no se escribe nada en localStorage: la fuente de verdad es Supabase.
 const noopStorage: StateStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 const PERM_LABEL: Record<Permission, string> = {
   "project.view": "ver el proyecto",
+  "projects.manage": "gestionar proyectos",
+  "finance.manage": "gestionar finanzas",
+  "inventory.manage": "gestionar materiales e inventario",
   "tasks.edit": "gestionar actividades",
   "stages.manage": "gestionar etapas",
   "quotes.manage": "gestionar cotizaciones",
@@ -118,6 +168,21 @@ export const useProjectStore = create<ProjectState>()(
         });
       };
 
+      /** Operación con confirmación (formularios del asistente): espera a Supabase y avisa si falla. */
+      const attempt = async (label: string, op: () => Promise<unknown>) => {
+        if (!isRemote) {
+          useUI.getState().toast({ title: "Disponible solo con base de datos", description: "En modo local los datos de demostración no se editan desde el asistente.", tone: "info" });
+          return false;
+        }
+        try {
+          await op();
+          return true;
+        } catch (e) {
+          useUI.getState().toast({ title: `No se pudo guardar: ${label}`, description: (e as Error).message, tone: "warning" });
+          return false;
+        }
+      };
+
       return {
         ...initial(),
         source: isRemote ? "remote" : "local",
@@ -128,8 +193,15 @@ export const useProjectStore = create<ProjectState>()(
           if (!isRemote) return;
           if (get().loadState === "idle") set({ loadState: "loading" });
           try {
-            const b = await api.loadProjectBundle(get().projectId);
-            set({ ...b, loadState: "ready", loadError: null });
+            const projects = await api.listProjects();
+            if (!projects.length) {
+              set({ projectId: "", ...api.emptyBundle(), loadState: "ready", loadError: null });
+              return;
+            }
+            const wanted = get().projectId || readActive();
+            const id = projects.some((p) => p.id === wanted) ? wanted! : projects[projects.length - 1].id;
+            const b = await api.loadProjectBundle(id);
+            set({ projectId: id, ...b, loadState: "ready", loadError: null });
           } catch (e) {
             set({ loadState: "error", loadError: (e as Error).message });
           }
@@ -201,6 +273,129 @@ export const useProjectStore = create<ProjectState>()(
           });
           remote("cotización", () => api.saveQuoteRemote(quote));
           return true;
+        },
+
+        selectProject: async (id) => {
+          writeActive(id);
+          set({ projectId: id });
+          await get().load();
+        },
+
+        createProject: async (input) => {
+          if (!guard("projects.manage")) return null;
+          const id = uid("prj");
+          if (!(await attempt("proyecto", () => api.createProject(id, input)))) return null;
+          // Etapas base sugeridas: el usuario las ajusta en el paso "Etapas"
+          await get().selectProject(id);
+          return id;
+        },
+
+        updateProject: async (input) => {
+          if (!guard("projects.manage")) return false;
+          const ok = await attempt("datos del proyecto", () => api.updateProject(get().projectId, input));
+          if (ok) await get().load();
+          return ok;
+        },
+
+        setStepSkipped: async (step, skipped) => {
+          if (!guard("projects.manage")) return false;
+          const p = get().projects.find((x) => x.id === get().projectId);
+          const current = new Set(p?.setupSkipped ?? []);
+          if (skipped) current.add(step);
+          else current.delete(step);
+          const list = [...current];
+          const ok = await attempt("estado del paso", () => api.setSkippedSteps(get().projectId, list));
+          if (ok) set((s) => ({ projects: s.projects.map((x) => (x.id === s.projectId ? { ...x, setupSkipped: list } : x)) }));
+          return ok;
+        },
+
+        addMember: async ({ name, role }) => {
+          if (!guard("projects.manage")) return false;
+          const m = { id: uid("mbr"), projectId: get().projectId, name: name.trim(), role: role.trim(), initials: initialsOf(name) };
+          const ok = await attempt("integrante", () => api.insertMember(m));
+          if (ok) set((s) => ({ members: [...s.members, m].sort((a, b) => a.name.localeCompare(b.name)) }));
+          return ok;
+        },
+
+        removeMember: async (id) => {
+          if (!guard("projects.manage")) return false;
+          const ok = await attempt("integrante", () => api.deleteMember(id));
+          if (ok) set((s) => ({ members: s.members.filter((m) => m.id !== id) }));
+          return ok;
+        },
+
+        saveStages: async (stages) => {
+          if (!guard("stages.manage")) return false;
+          const next = stages.map((s, i) => ({ ...s, projectId: get().projectId, order: i + 1 }));
+          const ok = await attempt("etapas", () => api.upsertStages(next));
+          if (ok) set({ stages: next });
+          return ok;
+        },
+
+        removeStage: async (id) => {
+          if (!guard("stages.manage")) return false;
+          const ok = await attempt("etapa", () => api.deleteStage(id));
+          if (ok) set((s) => ({ stages: s.stages.filter((x) => x.id !== id), tasks: s.tasks.filter((t) => t.stageId !== id) }));
+          return ok;
+        },
+
+        removeTask: async (id) => {
+          if (!guard("stages.manage")) return false;
+          const ok = await attempt("actividad", () => api.deleteTask(id));
+          if (ok) set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
+          return ok;
+        },
+
+        setBudget: async (amount) => {
+          if (!guard("finance.manage")) return false;
+          const p = get().projects.find((x) => x.id === get().projectId);
+          // Curva planeada inicial: inversión lineal entre la fecha de inicio y la de entrega
+          const curve = p ? [{ date: p.startDate, amount: 0 }, { date: p.plannedEndDate, amount }] : [];
+          const ok = await attempt("presupuesto", () => api.setBudget(get().projectId, amount, curve));
+          if (ok) set({ approvedBudget: amount, plannedCurve: curve });
+          return ok;
+        },
+
+        addExpense: async (input) => {
+          if (!guard("finance.manage")) return false;
+          const e = { ...input, id: uid("exp") };
+          const ok = await attempt("gasto", () => api.insertExpense(get().projectId, e));
+          if (ok) set((s) => ({ expenses: [...s.expenses, e].sort((a, b) => a.date.localeCompare(b.date)) }));
+          return ok;
+        },
+
+        removeExpense: async (id) => {
+          if (!guard("finance.manage")) return false;
+          const ok = await attempt("gasto", () => api.deleteExpense(id));
+          if (ok) set((s) => ({ expenses: s.expenses.filter((e) => e.id !== id) }));
+          return ok;
+        },
+
+        addMaterial: async (input, initialReceived) => {
+          if (!guard("inventory.manage")) return false;
+          const m: Material = { ...input, id: uid("mat"), receivedQty: 0, consumedQty: 0 };
+          const ok = await attempt("material", () => api.insertMaterial(get().projectId, m, get().materials.length));
+          if (!ok) return false;
+          if (initialReceived > 0)
+            await attempt("entrada inicial de inventario", () =>
+              api.insertMovement({ id: uid("mov"), materialId: m.id, type: "in", qty: initialReceived, date: new Date().toISOString().slice(0, 10), reference: "Inventario inicial" }),
+            );
+          await get().load();
+          return true;
+        },
+
+        removeMaterial: async (id) => {
+          if (!guard("inventory.manage")) return false;
+          const ok = await attempt("material", () => api.deleteMaterial(id));
+          if (ok) set((s) => ({ materials: s.materials.filter((m) => m.id !== id), movements: s.movements.filter((m) => m.materialId !== id) }));
+          return ok;
+        },
+
+        addMovement: async (input) => {
+          if (!guard("inventory.manage")) return false;
+          const ok = await attempt("movimiento de inventario", () => api.insertMovement({ ...input, id: uid("mov") }));
+          if (ok) await get().load();
+          return ok;
         },
 
         resetDemo: () => {

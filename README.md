@@ -46,6 +46,11 @@ modo local con los datos de demostración.
 - **Acceso**: la app abre en la pantalla de inicio de sesión / creación de cuenta. Sin sesión no se
   ven datos (lo exige la base de datos con RLS).
 
+### Proyectos reales y asistente “Completa tu proyecto”
+La migración `20261119010000_rc_onboarding.sql` borró los datos de demostración de Supabase
+(`supabase/seed.sql` queda solo como referencia). Cada proyecto se carga paso a paso desde la app;
+ver el análisis en [docs/ONBOARDING-UX.md](docs/ONBOARDING-UX.md).
+
 ### Roles
 
 | Rol | Ver | Actividades | Etapas | Cotizaciones | Usuarios |

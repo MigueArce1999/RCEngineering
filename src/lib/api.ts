@@ -61,6 +61,10 @@ const toProject = (r: Row): Project => ({
   startDate: r.start_date,
   plannedEndDate: r.planned_end_date,
   hasDemoData: r.has_demo_data,
+  clientName: r.client_name ?? "",
+  description: r.description ?? "",
+  currency: r.currency ?? "COP",
+  setupSkipped: r.setup_skipped ?? [],
 });
 
 const toNote = (r: Row): TaskNote => ({ id: r.id, text: r.text, createdAt: r.created_at, authorId: r.author_id ?? "" });
@@ -105,11 +109,29 @@ async function selectAll(table: string, build: (q: any) => any): Promise<Row[]> 
   }
 }
 
+export const emptyBundle = (projects: Project[] = []): ProjectBundle => ({
+  projects,
+  members: [],
+  stages: [],
+  tasks: [],
+  quotes: [],
+  materials: [],
+  movements: [],
+  expenses: [],
+  plannedCurve: [],
+  blueprints: [],
+  approvedBudget: 0,
+});
+
+export async function listProjects(): Promise<Project[]> {
+  return (await db().from("projects").select("*").order("created_at").then(check<Row[]>)).map(toProject);
+}
+
 export async function loadProjectBundle(projectId: string): Promise<ProjectBundle> {
   const c = db();
   const [projects, members, stages, materials, quotes, expenses, curve, blueprints] = await Promise.all([
-    c.from("projects").select("*").order("code").then(check<Row[]>),
-    c.from("members").select("*").order("id").then(check<Row[]>),
+    c.from("projects").select("*").order("created_at").then(check<Row[]>),
+    c.from("members").select("*").eq("project_id", projectId).order("name").then(check<Row[]>),
     c.from("stages").select("*").eq("project_id", projectId).order("sort_order").then(check<Row[]>),
     c.from("materials").select("*").eq("project_id", projectId).order("sort_order").then(check<Row[]>),
     c.from("quotes").select("*, quote_items(*)").eq("project_id", projectId).order("created_at").then(check<Row[]>),
@@ -131,7 +153,7 @@ export async function loadProjectBundle(projectId: string): Promise<ProjectBundl
   const project = projects.find((p) => p.id === projectId);
   return {
     projects: projects.map(toProject),
-    members: members.map((m) => ({ id: m.id, name: m.name, role: m.role, initials: m.initials })),
+    members: members.map((m) => ({ id: m.id, projectId: m.project_id, name: m.name, role: m.role, initials: m.initials })),
     stages: stages.map((s) => ({ id: s.id, projectId: s.project_id, order: s.sort_order, name: s.name, icon: s.icon, weight: num(s.weight) })),
     tasks: tasks.map((t) => toTask(t, notesByTask.get(t.id) ?? [])),
     quotes: quotes.map((q) => ({
@@ -221,4 +243,98 @@ export async function saveQuoteRemote(q: Quote) {
         .insert(q.items.map((it, i) => ({ id: it.id, quote_id: q.id, sort_order: i, description: it.description, category: it.category, unit: it.unit, quantity: it.quantity, unit_price: it.unitPrice })))
         .select("id"),
     );
+}
+
+// ── Asistente de configuración del proyecto ─────────────────────────────
+export interface ProjectInput {
+  code: string;
+  name: string;
+  clientName: string;
+  description: string;
+  type: string;
+  city: string;
+  country: string;
+  builtAreaM2: number;
+  levels: number;
+  structuralSystem: string;
+  status: Project["status"];
+  startDate: string;
+  plannedEndDate: string;
+}
+
+const projectRow = (id: string, p: ProjectInput) => ({
+  id,
+  code: p.code,
+  name: p.name,
+  client_name: p.clientName,
+  description: p.description,
+  type: p.type,
+  city: p.city,
+  country: p.country,
+  built_area_m2: p.builtAreaM2,
+  levels: p.levels,
+  structural_system: p.structuralSystem,
+  status: p.status,
+  start_date: p.startDate,
+  planned_end_date: p.plannedEndDate,
+});
+
+export async function createProject(id: string, p: ProjectInput) {
+  affected(await db().from("projects").insert(projectRow(id, p)).select("id"));
+}
+
+export async function updateProject(id: string, p: ProjectInput) {
+  affected(await db().from("projects").update(projectRow(id, p)).eq("id", id).select("id"));
+}
+
+export async function setSkippedSteps(id: string, skipped: string[]) {
+  affected(await db().from("projects").update({ setup_skipped: skipped }).eq("id", id).select("id"));
+}
+
+export async function insertMember(m: ProjectMember & { projectId: string }) {
+  affected(await db().from("members").insert({ id: m.id, project_id: m.projectId, name: m.name, role: m.role, initials: m.initials }).select("id"));
+}
+
+export async function deleteMember(id: string) {
+  affected(await db().from("members").delete().eq("id", id).select("id"));
+}
+
+export async function deleteStage(id: string) {
+  affected(await db().from("stages").delete().eq("id", id).select("id"));
+}
+
+export async function deleteTask(id: string) {
+  affected(await db().from("tasks").delete().eq("id", id).select("id"));
+}
+
+/** Presupuesto aprobado + curva de inversión planeada (lineal entre inicio y fin del proyecto). */
+export async function setBudget(projectId: string, amount: number, curve: { date: string; amount: number }[]) {
+  affected(await db().from("projects").update({ approved_budget: amount }).eq("id", projectId).select("id"));
+  check(await db().from("planned_curve").delete().eq("project_id", projectId).select("project_id"));
+  if (curve.length) affected(await db().from("planned_curve").insert(curve.map((c) => ({ project_id: projectId, date: c.date, amount: c.amount }))).select("project_id"));
+}
+
+export async function insertExpense(projectId: string, e: Expense) {
+  affected(await db().from("expenses").insert({ id: e.id, project_id: projectId, date: e.date, concept: e.concept, category: e.category, amount: e.amount }).select("id"));
+}
+
+export async function deleteExpense(id: string) {
+  affected(await db().from("expenses").delete().eq("id", id).select("id"));
+}
+
+export async function insertMaterial(projectId: string, m: Material, sortOrder: number) {
+  affected(
+    await db()
+      .from("materials")
+      .insert({ id: m.id, project_id: projectId, name: m.name, spec: m.spec, unit: m.unit, planned_qty: m.plannedQty, unit_price: m.unitPrice, min_stock: m.minStock, supplier: m.supplier, sort_order: sortOrder })
+      .select("id"),
+  );
+}
+
+export async function deleteMaterial(id: string) {
+  affected(await db().from("materials").delete().eq("id", id).select("id"));
+}
+
+export async function insertMovement(m: InventoryMovement) {
+  affected(await db().from("inventory_movements").insert({ id: m.id, material_id: m.materialId, type: m.type, qty: m.qty, date: m.date, reference: m.reference }).select("id"));
 }

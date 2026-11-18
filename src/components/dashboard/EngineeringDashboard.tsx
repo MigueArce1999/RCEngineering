@@ -14,6 +14,8 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useAuth } from "@/stores/authStore";
 import { asset } from "@/lib/asset";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import { SetupWizard } from "@/components/setup/SetupWizard";
+import { NoProjects, SetupProgressCard } from "@/components/setup/SetupProgress";
 import { SyncStatus } from "@/components/layout/SyncStatus";
 import { DEMO_NOTICE } from "@/data/demo";
 import { StagePanel } from "./StagePanel";
@@ -76,11 +78,23 @@ function Dashboard() {
     else void useProjectStore.getState().load();
   }, []);
 
+  const remote = useProjectStore((s) => s.source === "remote");
+  const loadState = useProjectStore((s) => s.loadState);
+  const hasProjects = useProjectStore((s) => s.projects.length > 0);
+  if (remote && loadState !== "ready" && loadState !== "error") return <Splash />;
+  const empty = remote && !hasProjects;
+
   return (
     <MotionConfig reducedMotion="user" transition={{ duration: 0.5, ease: APPLE }}>
       <TooltipProvider>
         <Navbar />
+        {empty ? (
+          <main id="inicio" className="mx-auto max-w-[1600px] px-4 pt-6 pb-10 sm:px-6 lg:px-8 lg:pt-8">
+            <NoProjects />
+          </main>
+        ) : (
         <main id="inicio" className="mx-auto max-w-[1600px] px-4 pt-6 pb-10 sm:px-6 lg:px-8 lg:pt-8">
+          <SetupProgressCard />
           {/* Encabezado + zona principal */}
           <div className="grid gap-x-6 gap-y-5 lg:grid-cols-[minmax(290px,25%)_1fr]">
             <motion.div {...rise(0)}>
@@ -128,7 +142,9 @@ function Dashboard() {
             <span>{DEMO_NOTICE}: personas, cifras y planos son ilustrativos.</span>
           </footer>
         </main>
+        )}
 
+        <SetupWizard />
         <StageDetailDrawer />
         <QuickQuoteModal />
         <BlueprintViewer />

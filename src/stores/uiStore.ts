@@ -61,6 +61,12 @@ interface UIState {
   renderQuality: "high" | "balanced";
   setRenderQuality: (q: "high" | "balanced") => void;
 
+  /** Asistente "Completa tu proyecto" */
+  setup: { open: boolean; step: import("@/lib/setup").SetupStepId; creating: boolean };
+  openSetup: (step?: import("@/lib/setup").SetupStepId, creating?: boolean) => void;
+  closeSetup: () => void;
+  setSetupStep: (step: import("@/lib/setup").SetupStepId) => void;
+
   toasts: Toast[];
   toast: (t: Omit<Toast, "id">) => void;
   dismissToast: (id: string) => void;
@@ -110,6 +116,11 @@ export const useUI = create<UIState>()((set) => ({
   setInfoCardCollapsed: (infoCardCollapsed) => set({ infoCardCollapsed }),
   renderQuality: "high",
   setRenderQuality: (renderQuality) => set({ renderQuality }),
+
+  setup: { open: false, step: "general", creating: false },
+  openSetup: (step = "general", creating = false) => set({ setup: { open: true, step, creating } }),
+  closeSetup: () => set((s) => ({ setup: { ...s.setup, open: false, creating: false } })),
+  setSetupStep: (step) => set((s) => ({ setup: { ...s.setup, step, creating: false } })),
 
   toasts: [],
   toast: (t) => {

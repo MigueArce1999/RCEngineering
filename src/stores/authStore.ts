@@ -5,7 +5,15 @@ import type { Session } from "@supabase/supabase-js";
 import { isRemote, supabase } from "@/lib/supabase";
 import { BASE_PATH } from "@/lib/asset";
 
-export type Permission = "project.view" | "tasks.edit" | "stages.manage" | "quotes.manage" | "users.manage";
+export type Permission =
+  | "project.view"
+  | "projects.manage"
+  | "tasks.edit"
+  | "stages.manage"
+  | "quotes.manage"
+  | "finance.manage"
+  | "inventory.manage"
+  | "users.manage";
 
 export interface Profile {
   id: string;

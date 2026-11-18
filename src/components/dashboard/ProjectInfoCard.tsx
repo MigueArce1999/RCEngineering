@@ -50,7 +50,7 @@ export function ProjectInfoCard() {
         {!collapsed && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
             <dl className="space-y-2 px-5 pt-3 text-[13px]">
-              <Row label="Etapa actual" value={`Etapa ${current.order} — ${STAGE_STATUS_LABEL[progressByStage[current.id].status]}`} />
+              <Row label="Etapa actual" value={current ? `Etapa ${current.order} — ${STAGE_STATUS_LABEL[progressByStage[current.id].status]}` : "Sin etapas definidas"} />
               <div className="flex items-center justify-between">
                 <dt className="text-ink-2">Estado</dt>
                 <dd>
@@ -61,9 +61,9 @@ export function ProjectInfoCard() {
             <div className="hairline mx-5 my-3" />
             <dl className="space-y-2 px-5 text-[13px]">
               <Row label="Tipo de proyecto" value={project.type} />
-              <Row label="Área de construcción" value={`${formatNumber(project.builtAreaM2)} m²`} />
+              <Row label="Área de construcción" value={project.builtAreaM2 ? `${formatNumber(project.builtAreaM2)} m²` : "—"} />
               <Row label="Niveles" value={String(project.levels)} />
-              <Row label="Sistema estructural" value={project.structuralSystem} />
+              <Row label="Sistema estructural" value={project.structuralSystem || "—"} />
             </dl>
             <div className="p-4 pt-4">
               <button

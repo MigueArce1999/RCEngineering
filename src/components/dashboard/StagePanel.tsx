@@ -12,6 +12,7 @@ import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { GlassButton, ProgressBar } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
+import { SetupEmpty } from "@/components/setup/SetupEmpty";
 
 export const STAGE_ICONS: Record<StageIcon, typeof Compass> = {
   survey: Compass,
@@ -39,6 +40,7 @@ export function StagePanel() {
         </Tooltip>
         <AddStageButton />
       </div>
+      {stages.length === 0 && <SetupEmpty text="Aún no hay etapas. Defínelas para medir el avance de la obra." step="stages" action="Definir etapas" />}
       <ol className="scroll-thin -mx-1 flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-1 pt-0.5 pb-2">
         {stages.map((stage, i) => (
           <motion.li
