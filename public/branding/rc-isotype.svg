@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 75 575 320" role="img" aria-label="RC">
+  <!-- PROVISIONAL: vectorización de referencia del isotipo RC tomada de la propuesta visual.
+       Reemplazar por el archivo oficial de marca (mismo nombre) sin cambiar el componente <BrandLogo/>. -->
+  <defs>
+    <linearGradient id="rcg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#127A3E"/>
+      <stop offset="0.55" stop-color="#0A5A2D"/>
+      <stop offset="1" stop-color="#053A1C"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#rcg)">
+    <path d="M92 84 H292 C334 84 354 118 354 156 C354 196 326 224 286 226 H262 L238 204 H186 Z"/>
+    <path d="M90 218 H200 L356 388 H236 L90 270 Z"/>
+    <path d="M452 84 H642 L502 236 L642 388 H462 C410 388 372 318 372 236 C372 152 410 84 452 84 Z"/>
+  </g>
+</svg>

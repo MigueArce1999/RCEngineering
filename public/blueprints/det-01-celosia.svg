@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 990" width="1400" height="990" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1400" height="990" fill="#ffffff"/>
+  <rect x="20" y="20" width="1360" height="950" fill="none" stroke="#1d3a30" stroke-width="2"/>
+  <g><rect x="200" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="258" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="316" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="374" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="432" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="490" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="548" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="606" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="664" y="200" width="24" height="420" fill="#1d5b3b"/><rect x="180" y="180" width="540" height="20" fill="#2b302f"/><rect x="180" y="620" width="540" height="20" fill="#2b302f"/><text x="180" y="680" font-size="12" fill="#1d3a30">Perfil aluminio 70 × 35 mm · pintura electrostática RAL 6005 · separación 170 mm</text><rect x="820" y="260" width="360" height="40" fill="#cfd8d2" stroke="#1d3a30"/><rect x="820" y="300" width="360" height="12" fill="#a77b55" stroke="#1d3a30"/><text x="820" y="340" font-size="12" fill="#1d3a30">Alero: listón teca 2" × 3" sobre perfilería galvanizada</text></g>
+  <g transform="translate(1020 800)">
+    <rect width="360" height="170" fill="#fff" stroke="#1d3a30" stroke-width="1.5"/>
+    <text x="16" y="30" font-size="15" font-weight="700" fill="#1d3a30">RC ENGINEERING &amp; TECHNOLOGY GROUP</text>
+    <text x="16" y="52" font-size="12" fill="#1d3a30">Proyecto: Residencia RC-001 · Barranquilla</text>
+    <line x1="0" y1="64" x2="360" y2="64" stroke="#1d3a30"/>
+    <text x="16" y="88" font-size="13" font-weight="700" fill="#1d3a30">DETALLE CELOSÍA VERTICAL Y ALERO</text>
+    <text x="16" y="110" font-size="12" fill="#1d3a30">Plano DET-01 · Rev. R0 · Escala 1:20</text>
+    <rect x="0" y="122" width="360" height="48" fill="#fbf1e1"/>
+    <text x="16" y="143" font-size="12" font-weight="700" fill="#94631a">ILUSTRATIVO — DATOS DE DEMOSTRACIÓN</text>
+    <text x="16" y="160" font-size="11" fill="#94631a">No apto para ejecución constructiva ni trámites.</text>
+  </g>
+  <text x="700" y="495" font-size="64" font-weight="700" fill="#c58a30" fill-opacity="0.06" text-anchor="middle" transform="rotate(-24 700 495)">ILUSTRATIVO · NO APTO PARA CONSTRUCCIÓN</text>
+</svg>

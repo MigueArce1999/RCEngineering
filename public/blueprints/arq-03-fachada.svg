@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 990" width="1400" height="990" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1400" height="990" fill="#ffffff"/>
+  <rect x="20" y="20" width="1360" height="950" fill="none" stroke="#1d3a30" stroke-width="2"/>
+  <g><line x1="84" y1="700" x2="1070" y2="700" stroke="#1d3a30" stroke-width="2"/><rect x="220" y="582.7" width="680" height="117.30000000000001" fill="#f4f3ef" stroke="#1d3a30"/><rect x="220" y="591.2" width="170" height="103.69999999999999" fill="#9aa19d" stroke="#1d3a30"/><rect x="311.8" y="606.5" width="40.8" height="88.4" fill="#a77b55" stroke="#1d3a30"/><rect x="396.8" y="606.5" width="156.39999999999998" height="88.4" fill="#dce8e5" stroke="#1d3a30"/><rect x="566.8" y="606.5" width="156.39999999999998" height="88.4" fill="#dce8e5" stroke="#1d3a30"/><rect x="736.8" y="606.5" width="156.4" height="88.4" fill="#dce8e5" stroke="#1d3a30"/><rect x="390" y="470.5" width="561" height="112.19999999999999" fill="#f4f3ef" stroke="#1d3a30"/><rect x="220" y="547" width="166.60000000000002" height="35.7" fill="#e7f0ee" stroke="#1d3a30" stroke-dasharray="3 2"/><rect x="396.8" y="494.3" width="156.39999999999998" height="88.4" fill="#dce8e5" stroke="#1d3a30"/><rect x="566.8" y="494.3" width="156.39999999999998" height="88.4" fill="#dce8e5" stroke="#1d3a30"/><rect x="798" y="494.3" width="122.39999999999999" height="88.4" fill="#dce8e5" stroke="#1d3a30"/><rect x="740.88" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="746.66" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="752.44" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="758.22" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="764" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="769.78" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="775.56" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="781.34" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><rect x="787.12" y="460.3" width="2.3800000000000003" height="234.60000000000002" fill="#1d5b3b"/><text x="985" y="586.7" font-size="11" fill="#1d3a30">N+3.45</text><text x="985" y="474.5" font-size="11" fill="#1d3a30">N+6.75</text><text x="985" y="698.9" font-size="11" fill="#1d3a30">N+0.15</text></g>
+  <g transform="translate(1020 800)">
+    <rect width="360" height="170" fill="#fff" stroke="#1d3a30" stroke-width="1.5"/>
+    <text x="16" y="30" font-size="15" font-weight="700" fill="#1d3a30">RC ENGINEERING &amp; TECHNOLOGY GROUP</text>
+    <text x="16" y="52" font-size="12" fill="#1d3a30">Proyecto: Residencia RC-001 · Barranquilla</text>
+    <line x1="0" y1="64" x2="360" y2="64" stroke="#1d3a30"/>
+    <text x="16" y="88" font-size="13" font-weight="700" fill="#1d3a30">FACHADA PRINCIPAL</text>
+    <text x="16" y="110" font-size="12" fill="#1d3a30">Plano ARQ-03 · Rev. R0 · Escala 1:100</text>
+    <rect x="0" y="122" width="360" height="48" fill="#fbf1e1"/>
+    <text x="16" y="143" font-size="12" font-weight="700" fill="#94631a">ILUSTRATIVO — DATOS DE DEMOSTRACIÓN</text>
+    <text x="16" y="160" font-size="11" fill="#94631a">No apto para ejecución constructiva ni trámites.</text>
+  </g>
+  <text x="700" y="495" font-size="64" font-weight="700" fill="#c58a30" fill-opacity="0.06" text-anchor="middle" transform="rotate(-24 700 495)">ILUSTRATIVO · NO APTO PARA CONSTRUCCIÓN</text>
+</svg>
