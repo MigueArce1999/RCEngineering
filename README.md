@@ -24,6 +24,17 @@ npm run dev            # http://localhost:3000
 | `npm run check` | lint + typecheck + build |
 | `node scripts/generate-blueprints.mjs` | Regenera los planos SVG ilustrativos |
 
+## Publicar (GitHub Pages)
+
+El workflow `.github/workflows/deploy-pages.yml` publica el sitio en cada push a `main`
+(lint + typecheck + build estático con `NEXT_PUBLIC_BASE_PATH=/RCEngineering`).
+
+1. Una sola vez: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. Ejecutar el workflow desde **Actions → Publicar en GitHub Pages → Run workflow** (o hacer push a `main`).
+3. Sitio: https://miguearce1999.github.io/RCEngineering/
+
+Build estático local: `NEXT_PUBLIC_BASE_PATH=/RCEngineering npm run build` → carpeta `out/`.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript estricto · Tailwind CSS 4 con tokens en CSS

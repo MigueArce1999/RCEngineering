@@ -58,7 +58,7 @@ export function EngineeringDashboard() {
           </div>
 
           {/* Gestión operativa y financiera */}
-          <section aria-label="Gestión operativa y financiera" className="mt-6 grid items-start gap-5 md:grid-cols-2 min-[1360px]:items-stretch min-[1360px]:grid-cols-[1.05fr_0.95fr_1fr_1.05fr]">
+          <section aria-label="Gestión operativa y financiera" className="mt-6 grid items-start gap-5 md:grid-cols-2 desk:items-stretch desk:grid-cols-[1.05fr_0.95fr_1fr_1.05fr]">
             <motion.div {...rise(0.15)} className="h-full">
               <QuoteSummary />
             </motion.div>

@@ -161,7 +161,7 @@ export function ArchitecturalViewer() {
                 Ver planos
               </GlassButton>
             </span>
-<span className="hidden min-[1400px]:contents">
+<span className="hidden wide:contents">
             <GlassButton
               variant="glass"
               size="md"

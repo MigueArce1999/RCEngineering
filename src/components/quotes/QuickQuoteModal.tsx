@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { asset } from "@/lib/asset";
 import { useMemo, useState } from "react";
 import type { CostCategory, Quote, QuoteAdjustments, QuoteItem } from "@/types";
 import { COST_CATEGORY_LABEL, itemSubtotal, quoteTotals } from "@/lib/domain";
@@ -277,7 +278,7 @@ function QuotePreview(props: {
           <header className="flex items-start justify-between gap-6">
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/branding/rc-isotype.svg" alt="RC" className="h-9" />
+              <img src={asset("/branding/rc-isotype.svg")} alt="RC" className="h-9" />
               <p className="mt-2 text-[12px] text-ink-2">RC Engineering &amp; Technology Group</p>
             </div>
             <div className="text-right">

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { asset } from "@/lib/asset";
 import { motion } from "framer-motion";
 import * as Popover from "@radix-ui/react-popover";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
@@ -42,7 +43,7 @@ export const NAV_ITEMS: { key: ModuleKey; label: string; icon: typeof House; hin
 export function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
     <a href="#inicio" className="flex shrink-0 items-center gap-3" aria-label="RC Engineering & Technology Group — Inicio">
-      <Image src="/branding/rc-isotype.svg" alt="" width={64} height={36} priority className="h-8 w-auto sm:h-9" />
+      <Image src={asset("/branding/rc-isotype.svg")} alt="" width={64} height={36} priority className="h-8 w-auto sm:h-9" />
       {!compact && (
         <>
           <span className="hidden h-8 w-px bg-line-strong sm:block" aria-hidden />

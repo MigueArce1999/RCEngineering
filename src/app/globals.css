@@ -40,6 +40,11 @@
   --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
 }
 
+@theme {
+  --breakpoint-desk: 85rem; /* 1360px: dashboard inferior a 4 columnas */
+  --breakpoint-wide: 87.5rem; /* 1400px */
+}
+
 @theme inline {
   --color-brand: var(--brand-primary);
   --color-brand-deep: var(--brand-deep);

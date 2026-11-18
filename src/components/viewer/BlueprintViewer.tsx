@@ -1,6 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { asset } from "@/lib/asset";
 import { Maximize2, Minus, Plus, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 import type { Blueprint } from "@/types";
@@ -183,12 +184,12 @@ export function BlueprintViewer() {
             >
               <div className="absolute inset-0 grid place-items-center p-6" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, transformOrigin: "center", transition: dragging ? "none" : "transform 120ms ease-out" }}>
                 {doc.format === "pdf" ? (
-                  <object data={doc.src} type="application/pdf" className="h-full w-full rounded-lg bg-white shadow-[var(--shadow-md)]" aria-label={doc.title}>
-                    <p className="p-6 text-[13px]">Tu navegador no puede mostrar PDF. <a href={doc.src}>Descargar</a></p>
+                  <object data={asset(doc.src)} type="application/pdf" className="h-full w-full rounded-lg bg-white shadow-[var(--shadow-md)]" aria-label={doc.title}>
+                    <p className="p-6 text-[13px]">Tu navegador no puede mostrar PDF. <a href={asset(doc.src)}>Descargar</a></p>
                   </object>
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={doc.src} alt={`${doc.code} · ${doc.title}`} className="blueprint-img max-h-full max-w-full rounded-md bg-white shadow-[var(--shadow-md)]" draggable={false} />
+                  <img src={asset(doc.src)} alt={`${doc.code} · ${doc.title}`} className="blueprint-img max-h-full max-w-full rounded-md bg-white shadow-[var(--shadow-md)]" draggable={false} />
                 )}
               </div>
               {doc.illustrative && (
