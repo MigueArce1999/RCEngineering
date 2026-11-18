@@ -6,7 +6,8 @@ import { asset } from "@/lib/asset";
 import { Maximize2, Minus, Plus, RotateCcw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
 import type { Blueprint } from "@/types";
-import { BLUEPRINT_CATEGORY_LABEL, blueprints } from "@/data/demo";
+import { BLUEPRINT_CATEGORY_LABEL } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
 import { cn } from "@/lib/format";
 import { useUI } from "@/stores/uiStore";
 import { Tooltip } from "@/components/ui/overlays";
@@ -19,12 +20,13 @@ const LEVEL_LABEL: Record<string, string> = { all: "Todos", N1: "Nivel 1", N2: "
  * Soporta SVG/PNG (imagen) y PDF (visor nativo del navegador). DWG/DXF/IFC: pendiente de evaluación.
  */
 export function BlueprintViewer() {
+  const { blueprints } = useCatalog();
   const open = useUI((s) => s.blueprintOpen);
   const close = useUI((s) => s.closeBlueprints);
   const requestedId = useUI((s) => s.blueprintId);
   const [category, setCategory] = useState<Blueprint["category"] | "all">("all");
   const [level, setLevel] = useState<(typeof LEVELS)[number]>("all");
-  const [docId, setDocId] = useState(blueprints[0].id);
+  const [docId, setDocId] = useState(blueprints[0]?.id ?? "");
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
   const frameRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -40,7 +42,7 @@ export function BlueprintViewer() {
     setView({ x: 0, y: 0, k: 1 });
   }
 
-  const list = useMemo(() => blueprints.filter((b) => (category === "all" || b.category === category) && (level === "all" || b.level === level)), [category, level]);
+  const list = useMemo(() => blueprints.filter((b) => (category === "all" || b.category === category) && (level === "all" || b.level === level)), [blueprints, category, level]);
   const doc = blueprints.find((b) => b.id === docId) ?? blueprints[0];
 
   const selectDoc = (id: string) => {
@@ -86,6 +88,8 @@ export function BlueprintViewer() {
     drag.current = { x: e.clientX, y: e.clientY };
     setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
   };
+
+  if (!doc) return null; // catálogo aún cargando o vacío
 
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && close()}>

@@ -35,6 +35,26 @@ El workflow `.github/workflows/deploy-pages.yml` publica el sitio en cada push a
 
 Build estático local: `NEXT_PUBLIC_BASE_PATH=/RCEngineering npm run build` → carpeta `out/`.
 
+## Base de datos (Supabase)
+
+Proyecto Supabase `ypbvpctzunsaxylmqjtc`. La URL y la clave **publicable** están en `.env`
+(son públicas; la seguridad la dan las políticas RLS). Sin esas variables la app funciona en
+modo local con los datos de demostración.
+
+- Esquema: `supabase/migrations/` (tablas, RLS y privilegios). Datos demo: `supabase/seed.sql`
+  (se regenera con `npx tsx scripts/build-seed.ts`).
+- **Permisos**: cualquiera puede ver. Para editar (actividades, notas, etapas, cotizaciones)
+  hay que iniciar sesión **y** estar en la tabla `public.editors`.
+
+### Dar acceso de edición a una persona
+1. Supabase → **Authentication → Users → Add user → Create new user**: correo y contraseña
+   (marca *Auto Confirm User*).
+2. Supabase → **SQL Editor** → ejecutar:
+   `insert into public.editors (email) values ('correo@empresa.com');`
+3. La persona entra desde el avatar (arriba a la derecha) → **Iniciar sesión**.
+
+Para quitar el acceso: `delete from public.editors where email = 'correo@empresa.com';`
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript estricto · Tailwind CSS 4 con tokens en CSS
@@ -104,8 +124,8 @@ consultas con los mismos tipos de `types/`.
 - **Modelo 3D procedural**: construido con geometría paramétrica (no es un GLB fotorrealista). Ver
   [docs/3D-MODELO.md](docs/3D-MODELO.md) para sustituirlo por GLB/IFC conservando los vínculos.
 - Instalaciones eléctricas/hidrosanitarias en 3D, DWG/DXF/IFC: pendientes (requieren BIM y librerías específicas).
-- Sin autenticación, permisos ni backend: todo persiste en `localStorage` del navegador
-  (restablecible desde Perfil → Restablecer demo).
+- Las cuentas se crean desde el panel de Supabase (no hay registro público ni recuperación de contraseña en la app).
+- Materiales, inventario, gastos y planos se leen de Supabase pero aún no se editan desde la app.
 - Solo RC-001 tiene datos; RC-002 y RC-003 aparecen como “sin datos”.
 - Costos de elementos 3D son paramétricos de demostración, no APU aprobados.
 - Sin pruebas unitarias todavía; la lógica en `lib/domain.ts` es pura y está lista para Vitest.

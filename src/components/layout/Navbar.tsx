@@ -19,13 +19,17 @@ import {
   Settings,
   RotateCcw,
   Menu,
+  LogIn,
+  LogOut,
+  User,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn, relativeDue } from "@/lib/format";
 import { useUI, type ModuleKey } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { inventoryItems } from "@/lib/domain";
-import { CURRENT_USER_ID, materials, members } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
+import { useAuth } from "@/stores/authStore";
 import { Avatar, Kbd } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 
@@ -184,6 +188,7 @@ export function Navbar() {
 }
 
 function Notifications() {
+  const { materials } = useCatalog();
   const tasks = useProjectStore((s) => s.tasks);
   const quotes = useProjectStore((s) => s.quotes);
   const openStage = useUI((s) => s.openStage);
@@ -202,7 +207,7 @@ function Notifications() {
       ...low.map((i) => ({ id: i.materialId, title: `Stock bajo: ${i.name}`, meta: "Alerta de abastecimiento", onClick: () => setMaterialDetailId(i.materialId) })),
       ...pending.map((q) => ({ id: q.id, title: `${q.code} pendiente de aprobación`, meta: q.title, onClick: () => openModule("quotes") })),
     ];
-  }, [tasks, quotes, openStage, setMaterialDetailId, openModule]);
+  }, [tasks, quotes, materials, openStage, setMaterialDetailId, openModule]);
 
   return (
     <Popover.Root>
@@ -234,36 +239,78 @@ function Notifications() {
 }
 
 function ProfileMenu() {
-  const me = members.find((m) => m.id === CURRENT_USER_ID)!;
   const setSettingsOpen = useUI((s) => s.setSettingsOpen);
   const resetDemo = useProjectStore((s) => s.resetDemo);
+  const source = useProjectStore((s) => s.source);
   const toast = useUI((s) => s.toast);
+  const email = useAuth((s) => s.email);
+  const isEditor = useAuth((s) => s.isEditor);
+  const setLoginOpen = useAuth((s) => s.setLoginOpen);
+  const signOut = useAuth((s) => s.signOut);
+  const remote = source === "remote";
+  const initials = email ? email.slice(0, 2).toUpperCase() : remote ? "" : "RC";
+  const itemCls = "flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-2";
+
   return (
     <Dropdown.Root>
       <Dropdown.Trigger asChild>
-        <button className="rounded-full ring-2 ring-white shadow-[var(--shadow-sm)] transition hover:ring-accent/40" aria-label={`Perfil de ${me.name}`}>
-          <Avatar initials={me.initials} size={40} />
+        <button className="rounded-full ring-2 ring-white shadow-[var(--shadow-sm)] transition hover:ring-accent/40" aria-label={email ? `Cuenta de ${email}` : "Cuenta"}>
+          {initials ? <Avatar initials={initials} size={40} /> : <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e2ece6] text-brand"><User size={18} /></span>}
         </button>
       </Dropdown.Trigger>
       <Dropdown.Portal>
         <Dropdown.Content align="end" sideOffset={10} className="anim-pop glass-float z-50 w-64 rounded-[18px] p-1.5">
           <div className="px-3 py-2.5">
-            <p className="text-[14px] font-semibold text-ink">{me.name}</p>
-            <p className="text-[12px] text-ink-2">{me.role}</p>
+            {remote ? (
+              email ? (
+                <>
+                  <p className="truncate text-[14px] font-semibold text-ink">{email}</p>
+                  <p className="text-[12px] text-ink-2">{isEditor ? "Editor del proyecto" : "Solo lectura · sin permisos de edición"}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[14px] font-semibold text-ink">Invitado</p>
+                  <p className="text-[12px] text-ink-2">Modo consulta · inicia sesión para editar</p>
+                </>
+              )
+            ) : (
+              <>
+                <p className="text-[14px] font-semibold text-ink">Modo local</p>
+                <p className="text-[12px] text-ink-2">Datos de demostración en este navegador</p>
+              </>
+            )}
           </div>
           <div className="hairline my-1" />
-          <Dropdown.Item onSelect={() => setSettingsOpen(true)} className="flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-white/80">
+          {remote && !email && (
+            <Dropdown.Item onSelect={() => setLoginOpen(true)} className={itemCls}>
+              <LogIn size={16} /> Iniciar sesión
+            </Dropdown.Item>
+          )}
+          <Dropdown.Item onSelect={() => setSettingsOpen(true)} className={itemCls}>
             <Settings size={16} /> Configuración
           </Dropdown.Item>
-          <Dropdown.Item
-            onSelect={() => {
-              resetDemo();
-              toast({ title: "Datos de demostración restablecidos", tone: "info" });
-            }}
-            className="flex cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-white/80"
-          >
-            <RotateCcw size={16} /> Restablecer demo
-          </Dropdown.Item>
+          {!remote && (
+            <Dropdown.Item
+              onSelect={() => {
+                resetDemo();
+                toast({ title: "Datos de demostración restablecidos", tone: "info" });
+              }}
+              className={itemCls}
+            >
+              <RotateCcw size={16} /> Restablecer demo
+            </Dropdown.Item>
+          )}
+          {remote && email && (
+            <Dropdown.Item
+              onSelect={async () => {
+                await signOut();
+                toast({ title: "Sesión cerrada", tone: "info" });
+              }}
+              className={itemCls}
+            >
+              <LogOut size={16} /> Cerrar sesión
+            </Dropdown.Item>
+          )}
         </Dropdown.Content>
       </Dropdown.Portal>
     </Dropdown.Root>

@@ -19,6 +19,7 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
+    "@supabase/supabase-js": "^2.119.1",
     "cmdk": "^1.1.1",
     "framer-motion": "^14.14.0",
     "geist": "^1.9.2",
@@ -41,6 +42,7 @@
     "eslint-config-next": "^16.4.6",
     "postcss": "^8.5.33",
     "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3"
   }
 }

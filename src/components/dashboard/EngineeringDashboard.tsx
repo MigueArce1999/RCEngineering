@@ -11,6 +11,9 @@ import { QuickQuoteModal } from "@/components/quotes/QuickQuoteModal";
 import { ModulePanels } from "@/components/modules/ModulePanels";
 import { Toaster, TooltipProvider } from "@/components/ui/overlays";
 import { useProjectStore } from "@/stores/projectStore";
+import { useAuth } from "@/stores/authStore";
+import { LoginModal } from "@/components/layout/LoginModal";
+import { SyncStatus } from "@/components/layout/SyncStatus";
 import { DEMO_NOTICE } from "@/data/demo";
 import { StagePanel } from "./StagePanel";
 import { StageDetailDrawer } from "./StageDetailDrawer";
@@ -38,7 +41,12 @@ const reveal = (delay: number) => ({
 export function EngineeringDashboard() {
   // Rehidratar el estado persistido después del primer render (evita desajustes SSR)
   useEffect(() => {
-    useProjectStore.persist.rehydrate();
+    if (useProjectStore.getState().source === "local") {
+      void useProjectStore.persist.rehydrate();
+      return;
+    }
+    void useProjectStore.getState().load();
+    return useAuth.getState().init();
   }, []);
 
   return (
@@ -86,7 +94,10 @@ export function EngineeringDashboard() {
           </section>
 
           <footer className="mt-8 flex flex-wrap items-center justify-between gap-2 text-[12px] text-ink-3">
-            <span>RC Engineering OS · v0.1 · Home</span>
+            <span className="flex flex-wrap items-center gap-3">
+              <span>RC Engineering OS · v0.1 · Home</span>
+              <SyncStatus />
+            </span>
             <span>{DEMO_NOTICE}: personas, cifras y planos son ilustrativos.</span>
           </footer>
         </main>
@@ -96,6 +107,7 @@ export function EngineeringDashboard() {
         <BlueprintViewer />
         <ModulePanels />
         <SearchCommand />
+        <LoginModal />
         <Toaster />
       </TooltipProvider>
     </MotionConfig>

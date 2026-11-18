@@ -9,7 +9,7 @@ import { COST_CATEGORY_LABEL, itemSubtotal, quoteTotals } from "@/lib/domain";
 import { cn, formatCOP, todayISO, uid } from "@/lib/format";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { projects } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
 import { Modal } from "@/components/ui/overlays";
 import { GlassButton } from "@/components/ui/primitives";
 
@@ -37,6 +37,7 @@ export function QuickQuoteModal() {
 }
 
 function QuoteForm({ onDone }: { onDone: () => void }) {
+  const { projects } = useCatalog();
   const projectId = useProjectStore((s) => s.projectId);
   const quotes = useProjectStore((s) => s.quotes);
   const saveQuote = useProjectStore((s) => s.saveQuote);
@@ -79,7 +80,7 @@ function QuoteForm({ onDone }: { onDone: () => void }) {
       adjustments: adj,
       notes: notes.trim(),
     };
-    saveQuote(q);
+    if (!saveQuote(q)) return;
     toast({ title: "Borrador guardado", description: `${code} · ${formatCOP(totals.total)}` });
     onDone();
   };
@@ -254,6 +255,7 @@ function QuotePreview(props: {
   onBack: () => void;
   onSave: () => void;
 }) {
+  const { projects } = useCatalog();
   const p = projects.find((x) => x.id === props.project);
   const totals = quoteTotals(props.items, props.adj);
   return (

@@ -108,6 +108,7 @@ function AddStageButton() {
     e.preventDefault();
     if (!name.trim()) return;
     const id = addStage(name.trim());
+    if (!id) return;
     setName("");
     setOpen(false);
     toast({ title: "Etapa creada", description: name.trim() });

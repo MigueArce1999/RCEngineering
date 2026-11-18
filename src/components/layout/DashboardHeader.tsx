@@ -2,7 +2,7 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, Plus } from "lucide-react";
-import { projects } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { GlassButton, StatusBadge } from "@/components/ui/primitives";
@@ -32,6 +32,7 @@ export function HeaderActions() {
 }
 
 export function ProjectSelector() {
+  const { projects } = useCatalog();
   const projectId = useProjectStore((s) => s.projectId);
   const active = projects.find((p) => p.id === projectId)!;
   const toast = useUI((s) => s.toast);

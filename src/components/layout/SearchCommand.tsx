@@ -6,7 +6,7 @@ import { Box, FileText, Layers, ListChecks, Map, Package } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { blueprints, materials, projects } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
 import { ELEMENT_LIST, ELEMENT_TYPE_LABEL } from "@/lib/house/spec";
 import { Kbd } from "@/components/ui/primitives";
 
@@ -15,6 +15,7 @@ import { Kbd } from "@/components/ui/primitives";
  * materiales, cotizaciones y elementos del modelo 3D de los datos de demostración.
  */
 export function SearchCommand() {
+  const { materials, blueprints, projects } = useCatalog();
   const open = useUI((s) => s.commandOpen);
   const setOpen = useUI((s) => s.setCommandOpen);
   const tasks = useProjectStore((s) => s.tasks);

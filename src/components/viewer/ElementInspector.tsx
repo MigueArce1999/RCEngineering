@@ -7,11 +7,12 @@ import { ELEMENT_STATUS_LABEL, elementBuildStatus, tasksForElement } from "@/lib
 import { formatCOP, formatNumber, cn } from "@/lib/format";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { blueprints } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
 import { GlassCard, StatusBadge } from "@/components/ui/primitives";
 
 /** Panel de propiedades del elemento arquitectónico seleccionado en el visor. */
 export function ElementInspector({ compact = false }: { compact?: boolean }) {
+  const { blueprints } = useCatalog();
   const id = useUI((s) => s.selectedElementId);
   const select = useUI((s) => s.selectElement);
   const openStage = useUI((s) => s.openStage);

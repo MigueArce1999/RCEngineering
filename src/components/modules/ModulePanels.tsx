@@ -1,12 +1,14 @@
 "use client";
 
-import { ArrowRight, Box, Plus, TriangleAlert } from "lucide-react";
+import { ArrowRight, Plus, TriangleAlert } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import type { QuoteStatus } from "@/types";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useProjectData } from "@/hooks/useProjectData";
-import { APPROVED_BUDGET, CURRENT_USER_ID, DEMO_BASE_DATE, expenses, materials, members, movements, projects } from "@/data/demo";
+import { DEMO_BASE_DATE } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
+import { useAuth } from "@/stores/authStore";
 import { COST_CATEGORY_LABEL, STAGE_STATUS_LABEL, inventoryItems, quoteTotals } from "@/lib/domain";
 import { cn, formatCOP, formatDate, formatNumber, formatPct } from "@/lib/format";
 import { Drawer, Modal } from "@/components/ui/overlays";
@@ -70,6 +72,7 @@ export function ModulePanels() {
 }
 
 function ProjectsPanel() {
+  const { projects } = useCatalog();
   const { overall } = useProjectData();
   const toast = useUI((s) => s.toast);
   const openModule = useUI((s) => s.openModule);
@@ -144,6 +147,7 @@ function QuotesPanel() {
 }
 
 function MaterialsPanel() {
+  const { materials } = useCatalog();
   const setDetail = useUI((s) => s.setMaterialDetailId);
   return (
     <div className="px-6 pb-6">
@@ -168,7 +172,8 @@ function MaterialsPanel() {
 }
 
 function InventoryPanel() {
-  const items = useMemo(() => inventoryItems(materials), []);
+  const { materials, movements } = useCatalog();
+  const items = useMemo(() => inventoryItems(materials), [materials]);
   const name = (id: string) => materials.find((m) => m.id === id)?.name ?? id;
   const unit = (id: string) => materials.find((m) => m.id === id)?.unit ?? "";
   return (
@@ -218,18 +223,19 @@ function InventoryPanel() {
 }
 
 function FinancePanel() {
+  const { expenses, approvedBudget } = useCatalog();
   const f = useFinance();
   const { overall } = useProjectData();
   const byCat = useMemo(() => {
     const acc: Record<string, number> = {};
     expenses.forEach((e) => (acc[e.category] = (acc[e.category] ?? 0) + e.amount));
     return acc;
-  }, []);
+  }, [expenses]);
   return (
     <div className="space-y-5 px-6 pb-6">
       <div className="grid grid-cols-2 gap-3">
         {[
-          ["Presupuesto aprobado", formatCOP(APPROVED_BUDGET)],
+          ["Presupuesto aprobado", formatCOP(approvedBudget)],
           ["Valor ejecutado", formatCOP(f.executed)],
           ["Saldo disponible", formatCOP(f.available)],
           ["Planeado a la fecha", formatCOP(f.plannedToDate)],
@@ -277,6 +283,7 @@ function FinancePanel() {
 }
 
 function MaterialDetailModal() {
+  const { materials } = useCatalog();
   const id = useUI((s) => s.materialDetailId);
   const setId = useUI((s) => s.setMaterialDetailId);
   const m = materials.find((x) => x.id === id);
@@ -340,6 +347,7 @@ function MaterialDetailModal() {
 }
 
 function ProjectDetailModal() {
+  const { members } = useCatalog();
   const open = useUI((s) => s.projectDetailOpen);
   const setOpen = useUI((s) => s.setProjectDetailOpen);
   const openStage = useUI((s) => s.openStage);
@@ -412,10 +420,14 @@ function SettingsModal() {
   const quality = useUI((s) => s.renderQuality);
   const setQuality = useUI((s) => s.setRenderQuality);
   const resetDemo = useProjectStore((s) => s.resetDemo);
+  const source = useProjectStore((s) => s.source);
+  const reload = useProjectStore((s) => s.load);
   const toast = useUI((s) => s.toast);
-  const me = members.find((m) => m.id === CURRENT_USER_ID)!;
+  const email = useAuth((s) => s.email);
+  const isEditor = useAuth((s) => s.isEditor);
+  const remote = source === "remote";
   return (
-    <Modal open={open} onOpenChange={setOpen} title="Configuración" description={`${me.name} · ${me.role}`} width={520}>
+    <Modal open={open} onOpenChange={setOpen} title="Configuración" description={remote ? (email ? `${email} · ${isEditor ? "editor" : "solo lectura"}` : "Invitado · solo lectura") : "Modo local"} width={520}>
       <div className="space-y-5">
         <div>
           <p className="text-[13px] font-semibold text-ink">Calidad del visor 3D</p>
@@ -429,25 +441,41 @@ function SettingsModal() {
           </div>
         </div>
         <div className="hairline" />
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[13px] font-semibold text-ink">Datos de demostración</p>
-            <p className="text-[12px] text-ink-2">Se guardan en este navegador. Restablecer borra actividades, notas y cotizaciones creadas.</p>
+        {remote ? (
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[13px] font-semibold text-ink">Base de datos</p>
+              <p className="text-[12px] text-ink-2">Conectado a Supabase. Los cambios se guardan para todos los usuarios.</p>
+            </div>
+            <GlassButton
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await reload();
+                toast({ title: "Datos actualizados desde Supabase", tone: "info" });
+              }}
+            >
+              Recargar
+            </GlassButton>
           </div>
-          <GlassButton
-            variant="danger"
-            size="sm"
-            onClick={() => {
-              resetDemo();
-              toast({ title: "Datos restablecidos", tone: "info" });
-            }}
-          >
-            Restablecer
-          </GlassButton>
-        </div>
-        <div className="flex items-center gap-2 rounded-[12px] bg-surface-2/60 px-3 py-2 text-[12px] text-ink-2">
-          <Box size={14} /> Autenticación y permisos por proyecto se habilitarán al conectar el backend.
-        </div>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[13px] font-semibold text-ink">Datos de demostración</p>
+              <p className="text-[12px] text-ink-2">Se guardan en este navegador. Restablecer borra actividades, notas y cotizaciones creadas.</p>
+            </div>
+            <GlassButton
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                resetDemo();
+                toast({ title: "Datos restablecidos", tone: "info" });
+              }}
+            >
+              Restablecer
+            </GlassButton>
+          </div>
+        )}
       </div>
     </Modal>
   );

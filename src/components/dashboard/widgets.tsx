@@ -7,7 +7,8 @@ import { useMemo, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUI, type ModuleKey } from "@/stores/uiStore";
-import { APPROVED_BUDGET, DEMO_BASE_DATE, expenses, materials, members, movements, plannedCurve } from "@/data/demo";
+import { DEMO_BASE_DATE } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
 import { financialSummary, inventoryItems, plannedAt, quotesSummary, weeklyMovementCounts } from "@/lib/domain";
 import { cn, formatCOP, formatCOPMillions, formatNumber, formatPct, relativeDue } from "@/lib/format";
 import { CardHeader, GlassButton, GlassCard, ProgressBar } from "@/components/ui/primitives";
@@ -116,6 +117,7 @@ export function QuoteSummary() {
 
 // ── B · Materiales ──────────────────────────────────────────────────────
 export function MaterialsWidget() {
+  const { materials } = useCatalog();
   const setMaterialDetailId = useUI((s) => s.setMaterialDetailId);
   const list = materials.filter((m) => m.id !== "mat-gra");
   return (
@@ -151,8 +153,9 @@ export function MaterialsWidget() {
 
 // ── C · Inventario ──────────────────────────────────────────────────────
 export function InventoryWidget() {
-  const items = useMemo(() => inventoryItems(materials), []);
-  const weeks = useMemo(() => weeklyMovementCounts(movements, DEMO_BASE_DATE), []);
+  const { materials, movements } = useCatalog();
+  const items = useMemo(() => inventoryItems(materials), [materials]);
+  const weeks = useMemo(() => weeklyMovementCounts(movements, DEMO_BASE_DATE), [movements]);
   const low = items.filter((i) => i.low);
   const refs = items.filter((i) => i.stock > 0).length;
   const ins = weeks.reduce((s, w) => s + w.in, 0);
@@ -209,7 +212,8 @@ export function InventoryWidget() {
 
 // ── D · Finanzas ────────────────────────────────────────────────────────
 export function useFinance() {
-  return useMemo(() => financialSummary(APPROVED_BUDGET, expenses, plannedAt(plannedCurve, DEMO_BASE_DATE)), []);
+  const { expenses, plannedCurve, approvedBudget } = useCatalog();
+  return useMemo(() => financialSummary(approvedBudget, expenses, plannedAt(plannedCurve, DEMO_BASE_DATE)), [approvedBudget, expenses, plannedCurve]);
 }
 
 export function FinanceOverview() {
@@ -274,6 +278,7 @@ export function FinanceOverview() {
 
 // ── E · Actividad pendiente ─────────────────────────────────────────────
 export function ActivityTimeline() {
+  const { members } = useCatalog();
   const tasks = useProjectStore((s) => s.tasks);
   const toggle = useProjectStore((s) => s.toggleTaskDone);
   const openStage = useUI((s) => s.openStage);
@@ -305,8 +310,8 @@ export function ActivityTimeline() {
               <motion.li key={t.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.25 }} className="relative flex gap-3 py-2">
                 <button
                   onClick={() => {
-                    toggle(t.id);
-                    toast({ title: "Actividad completada", description: `${t.title} · avance de etapa actualizado` });
+                    if (toggle(t.id))
+                      toast({ title: "Actividad completada", description: `${t.title} · avance de etapa actualizado` });
                   }}
                   className={cn(
                     "relative z-10 mt-0.5 grid h-[23px] w-[23px] shrink-0 place-items-center rounded-full border bg-white transition hover:border-accent hover:bg-accent-soft",

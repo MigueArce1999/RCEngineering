@@ -1,105 +1,212 @@
 "use client";
 
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-import type { ConstructionStage, Quote, Task, TaskStatus } from "@/types";
-import { quotes as demoQuotes, stages as demoStages, CURRENT_USER_ID } from "@/data/demo";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+import type {
+  Blueprint,
+  ConstructionStage,
+  Expense,
+  InventoryMovement,
+  Material,
+  Project,
+  ProjectMember,
+  Quote,
+  Task,
+  TaskNote,
+  TaskStatus,
+} from "@/types";
+import * as demo from "@/data/demo";
 import { buildDemoTasks } from "@/data/tasks";
 import { uid } from "@/lib/format";
+import { isRemote } from "@/lib/supabase";
+import * as api from "@/lib/api";
+import { canEdit, useAuth } from "./authStore";
+import { useUI } from "./uiStore";
 
 /**
- * Estado de dominio del proyecto activo. Persistido en localStorage en esta fase;
- * las acciones están pensadas para mapearse 1:1 a mutaciones de la API (Supabase).
+ * Estado del proyecto activo.
+ * - Con Supabase configurado: se carga de la base y cada cambio se guarda allí
+ *   (actualización optimista; si falla se revierte recargando y se avisa).
+ * - Sin Supabase: datos de demostración persistidos en localStorage.
  */
-interface ProjectState {
+interface Catalog {
+  projects: Project[];
+  members: ProjectMember[];
+  materials: Material[];
+  movements: InventoryMovement[];
+  expenses: Expense[];
+  plannedCurve: { date: string; amount: number }[];
+  blueprints: Blueprint[];
+  approvedBudget: number;
+}
+
+interface ProjectState extends Catalog {
   projectId: string;
   stages: ConstructionStage[];
   tasks: Task[];
   quotes: Quote[];
+  source: "local" | "remote";
+  loadState: "idle" | "loading" | "ready" | "error";
+  loadError: string | null;
 
-  setTaskStatus: (taskId: string, status: TaskStatus) => void;
-  toggleTaskDone: (taskId: string) => void;
-  addTaskNote: (taskId: string, text: string) => void;
-  addTask: (stageId: string, input: Pick<Task, "title" | "description" | "assigneeId" | "dueDate" | "priority">) => string;
+  load: () => Promise<void>;
 
-  renameStage: (stageId: string, name: string) => void;
-  moveStage: (stageId: string, direction: -1 | 1) => void;
-  addStage: (name: string) => string;
+  setTaskStatus: (taskId: string, status: TaskStatus) => boolean;
+  toggleTaskDone: (taskId: string) => boolean;
+  addTaskNote: (taskId: string, text: string) => boolean;
+  addTask: (stageId: string, input: Pick<Task, "title" | "description" | "assigneeId" | "dueDate" | "priority">) => string | null;
 
-  saveQuote: (quote: Quote) => void;
+  renameStage: (stageId: string, name: string) => boolean;
+  moveStage: (stageId: string, direction: -1 | 1) => boolean;
+  addStage: (name: string) => string | null;
+
+  saveQuote: (quote: Quote) => boolean;
   resetDemo: () => void;
 }
 
+const demoCatalog = (): Catalog => ({
+  projects: demo.projects,
+  members: demo.members,
+  materials: demo.materials,
+  movements: demo.movements,
+  expenses: demo.expenses,
+  plannedCurve: demo.plannedCurve,
+  blueprints: demo.blueprints,
+  approvedBudget: demo.APPROVED_BUDGET,
+});
+
 const initial = () => ({
   projectId: "prj-rc-001",
-  stages: demoStages,
+  stages: demo.stages,
   tasks: buildDemoTasks(),
-  quotes: demoQuotes,
+  quotes: demo.quotes,
+  ...demoCatalog(),
 });
+
+// En modo remoto no se escribe nada en localStorage: la fuente de verdad es Supabase.
+const noopStorage: StateStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+
+/** Bloquea la edición si no hay permiso y abre el inicio de sesión. */
+function guard() {
+  if (canEdit()) return true;
+  const auth = useAuth.getState();
+  useUI.getState().toast({
+    title: auth.session ? "Tu cuenta no tiene permisos de edición" : "Inicia sesión para editar",
+    description: auth.session ? "Pide a un administrador que agregue tu correo a los editores." : "Puedes consultar todo; para modificar datos necesitas una cuenta autorizada.",
+    tone: "info",
+  });
+  if (!auth.session) auth.setLoginOpen(true);
+  return false;
+}
 
 export const useProjectStore = create<ProjectState>()(
   persist(
-    (set, get) => ({
-      ...initial(),
+    (set, get) => {
+      /** Aplica el cambio local y lo envía a Supabase; si falla, recarga desde la base. */
+      const remote = (label: string, op: () => Promise<unknown>) => {
+        if (!isRemote) return;
+        op().catch((e: Error) => {
+          useUI.getState().toast({ title: `No se pudo guardar: ${label}`, description: e.message, tone: "warning" });
+          void get().load();
+        });
+      };
 
-      setTaskStatus: (taskId, status) =>
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) })),
+      return {
+        ...initial(),
+        source: isRemote ? "remote" : "local",
+        loadState: isRemote ? "idle" : "ready",
+        loadError: null,
 
-      toggleTaskDone: (taskId) =>
-        set((s) => ({
-          tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, status: t.status === "done" ? "pending" : "done" } : t)),
-        })),
+        load: async () => {
+          if (!isRemote) return;
+          if (get().loadState === "idle") set({ loadState: "loading" });
+          try {
+            const b = await api.loadProjectBundle(get().projectId);
+            set({ ...b, loadState: "ready", loadError: null });
+          } catch (e) {
+            set({ loadState: "error", loadError: (e as Error).message });
+          }
+        },
 
-      addTaskNote: (taskId, text) =>
-        set((s) => ({
-          tasks: s.tasks.map((t) =>
-            t.id === taskId
-              ? { ...t, notes: [...t.notes, { id: uid("note"), text, createdAt: new Date().toISOString(), authorId: CURRENT_USER_ID }] }
-              : t,
-          ),
-        })),
+        setTaskStatus: (taskId, status) => {
+          if (!guard()) return false;
+          set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) }));
+          remote("estado de la actividad", () => api.updateTaskStatus(taskId, status));
+          return true;
+        },
 
-      addTask: (stageId, input) => {
-        const id = uid("tsk");
-        set((s) => ({
-          tasks: [...s.tasks, { id, stageId, status: "pending", notes: [], elementIds: [], category: "Personalizada", ...input }],
-        }));
-        return id;
-      },
+        toggleTaskDone: (taskId) => {
+          const t = get().tasks.find((x) => x.id === taskId);
+          if (!t) return false;
+          return get().setTaskStatus(taskId, t.status === "done" ? "pending" : "done");
+        },
 
-      renameStage: (stageId, name) =>
-        set((s) => ({ stages: s.stages.map((st) => (st.id === stageId ? { ...st, name } : st)) })),
+        addTaskNote: (taskId, text) => {
+          if (!guard()) return false;
+          const note: TaskNote = { id: uid("note"), text, createdAt: new Date().toISOString(), authorId: "" };
+          set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, notes: [...t.notes, note] } : t)) }));
+          remote("observación", () => api.insertTaskNote(taskId, note));
+          return true;
+        },
 
-      moveStage: (stageId, direction) => {
-        const sorted = [...get().stages].sort((a, b) => a.order - b.order);
-        const i = sorted.findIndex((s) => s.id === stageId);
-        const j = i + direction;
-        if (i < 0 || j < 0 || j >= sorted.length) return;
-        [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
-        set({ stages: sorted.map((s, k) => ({ ...s, order: k + 1 })) });
-      },
+        addTask: (stageId, input) => {
+          if (!guard()) return null;
+          const task: Task = { id: uid("tsk"), stageId, status: "pending", notes: [], elementIds: [], category: "Personalizada", ...input };
+          set((s) => ({ tasks: [...s.tasks, task] }));
+          const order = get().tasks.filter((t) => t.stageId === stageId).length + 10_000;
+          remote("actividad", () => api.insertTask(task, order));
+          return task.id;
+        },
 
-      addStage: (name) => {
-        const id = uid("stg");
-        set((s) => ({
-          stages: [...s.stages, { id, projectId: s.projectId, order: s.stages.length + 1, name, icon: "generic", weight: 0.1 }],
-        }));
-        return id;
-      },
+        renameStage: (stageId, name) => {
+          if (!guard()) return false;
+          set((s) => ({ stages: s.stages.map((st) => (st.id === stageId ? { ...st, name } : st)) }));
+          remote("nombre de la etapa", () => api.upsertStages(get().stages.filter((s) => s.id === stageId)));
+          return true;
+        },
 
-      saveQuote: (quote) =>
-        set((s) => {
-          const exists = s.quotes.some((q) => q.id === quote.id);
-          return { quotes: exists ? s.quotes.map((q) => (q.id === quote.id ? quote : q)) : [...s.quotes, quote] };
-        }),
+        moveStage: (stageId, direction) => {
+          if (!guard()) return false;
+          const sorted = [...get().stages].sort((a, b) => a.order - b.order);
+          const i = sorted.findIndex((s) => s.id === stageId);
+          const j = i + direction;
+          if (i < 0 || j < 0 || j >= sorted.length) return false;
+          [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
+          const next = sorted.map((s, k) => ({ ...s, order: k + 1 }));
+          set({ stages: next });
+          remote("orden de etapas", () => api.upsertStages(next));
+          return true;
+        },
 
-      resetDemo: () => set(initial()),
-    }),
+        addStage: (name) => {
+          if (!guard()) return null;
+          const stage: ConstructionStage = { id: uid("stg"), projectId: get().projectId, order: get().stages.length + 1, name, icon: "generic", weight: 0.1 };
+          set((s) => ({ stages: [...s.stages, stage] }));
+          remote("etapa", () => api.upsertStages([stage]));
+          return stage.id;
+        },
+
+        saveQuote: (quote) => {
+          if (!guard()) return false;
+          set((s) => {
+            const exists = s.quotes.some((q) => q.id === quote.id);
+            return { quotes: exists ? s.quotes.map((q) => (q.id === quote.id ? quote : q)) : [...s.quotes, quote] };
+          });
+          remote("cotización", () => api.saveQuoteRemote(quote));
+          return true;
+        },
+
+        resetDemo: () => {
+          if (isRemote) return;
+          set(initial());
+        },
+      };
+    },
     {
       name: "rc-eos-project",
-      version: 1,
-      storage: createJSONStorage(() => localStorage),
-      // Se rehidrata en el cliente tras el primer render (ver StoreHydrator) para evitar desajustes SSR.
+      version: 2,
+      storage: createJSONStorage(() => (isRemote ? noopStorage : localStorage)),
+      // Se rehidrata en el cliente tras el primer render (ver EngineeringDashboard) para evitar desajustes SSR.
       skipHydration: true,
       partialize: (s) => ({ projectId: s.projectId, stages: s.stages, tasks: s.tasks, quotes: s.quotes }),
     },

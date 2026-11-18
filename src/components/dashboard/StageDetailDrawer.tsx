@@ -10,7 +10,7 @@ import { STAGE_STATUS_LABEL } from "@/lib/domain";
 import { useProjectData } from "@/hooks/useProjectData";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUI } from "@/stores/uiStore";
-import { members } from "@/data/demo";
+import { useCatalog } from "@/hooks/useCatalog";
 import { ELEMENT_INDEX } from "@/lib/house/spec";
 import { Drawer } from "@/components/ui/overlays";
 import { Avatar, GlassButton, ProgressBar, StatusBadge } from "@/components/ui/primitives";
@@ -184,6 +184,7 @@ function StageTitle({ stageId, name, order }: { stageId: string; name: string; o
 }
 
 function TaskRow({ task, expanded, onToggleExpand, autoScroll }: { task: Task; expanded: boolean; onToggleExpand: () => void; autoScroll: boolean }) {
+  const { members } = useCatalog();
   const toggle = useProjectStore((s) => s.toggleTaskDone);
   const setStatus = useProjectStore((s) => s.setTaskStatus);
   const addNote = useProjectStore((s) => s.addTaskNote);
@@ -202,8 +203,7 @@ function TaskRow({ task, expanded, onToggleExpand, autoScroll }: { task: Task; e
   const submitNote = (e: FormEvent) => {
     e.preventDefault();
     if (!note.trim()) return;
-    addNote(task.id, note.trim());
-    setNote("");
+    if (addNote(task.id, note.trim())) setNote("");
   };
 
   return (
@@ -211,8 +211,8 @@ function TaskRow({ task, expanded, onToggleExpand, autoScroll }: { task: Task; e
       <div className="flex items-start gap-3 px-3 py-2.5">
         <button
           onClick={() => {
-            toggle(task.id);
-            toast({ title: done ? "Actividad reabierta" : "Actividad completada", description: task.title, tone: done ? "info" : "success" });
+            if (toggle(task.id))
+              toast({ title: done ? "Actividad reabierta" : "Actividad completada", description: task.title, tone: done ? "info" : "success" });
           }}
           className={cn(
             "mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border transition-all duration-150",
@@ -322,6 +322,7 @@ function TaskRow({ task, expanded, onToggleExpand, autoScroll }: { task: Task; e
 }
 
 function NewTaskForm({ stageId }: { stageId: string }) {
+  const { members } = useCatalog();
   const addTask = useProjectStore((s) => s.addTask);
   const toast = useUI((s) => s.toast);
   const [open, setOpen] = useState(false);
@@ -344,7 +345,7 @@ function NewTaskForm({ stageId }: { stageId: string }) {
       onSubmit={(e) => {
         e.preventDefault();
         if (!title.trim()) return;
-        addTask(stageId, { title: title.trim(), description: "Actividad creada por el usuario.", assigneeId, dueDate, priority });
+        if (!addTask(stageId, { title: title.trim(), description: "Actividad creada por el usuario.", assigneeId, dueDate, priority })) return;
         toast({ title: "Actividad agregada", description: title.trim() });
         setTitle("");
         setOpen(false);
