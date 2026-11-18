@@ -101,9 +101,6 @@ consultas con los mismos tipos de `types/`.
 
 ## Limitaciones y pendientes
 
-- **Logo**: no se recibió el archivo oficial, así que `public/branding/rc-isotype.svg` es una
-  vectorización provisional tomada de la propuesta visual. Reemplazar por el archivo oficial con
-  el mismo nombre.
 - **Modelo 3D procedural**: construido con geometría paramétrica (no es un GLB fotorrealista). Ver
   [docs/3D-MODELO.md](docs/3D-MODELO.md) para sustituirlo por GLB/IFC conservando los vínculos.
 - Instalaciones eléctricas/hidrosanitarias en 3D, DWG/DXF/IFC: pendientes (requieren BIM y librerías específicas).

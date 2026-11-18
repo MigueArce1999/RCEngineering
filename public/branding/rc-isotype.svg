@@ -1,16 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 75 575 320" role="img" aria-label="RC">
-  <!-- PROVISIONAL: vectorización de referencia del isotipo RC tomada de la propuesta visual.
-       Reemplazar por el archivo oficial de marca (mismo nombre) sin cambiar el componente <BrandLogo/>. -->
-  <defs>
-    <linearGradient id="rcg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#127A3E"/>
-      <stop offset="0.55" stop-color="#0A5A2D"/>
-      <stop offset="1" stop-color="#053A1C"/>
-    </linearGradient>
-  </defs>
-  <g fill="url(#rcg)">
-    <path d="M92 84 H292 C334 84 354 118 354 156 C354 196 326 224 286 226 H262 L238 204 H186 Z"/>
-    <path d="M90 218 H200 L356 388 H236 L90 270 Z"/>
-    <path d="M452 84 H642 L502 236 L642 388 H462 C410 388 372 318 372 236 C372 152 410 84 452 84 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="49 112 222 121" role="img" aria-label="RC Engineering and Technology Group">
+  <g fill="#063D32">
+    <path d="M49.5 112.7 H111.5 C130.5 112.7 145.9 120.6 152.2 134.3 C157.3 145.4 147.5 159.8 134.4 166.3 C126.3 170.4 116.9 172.5 106.7 172.5 L156 222 V232.5 H96 L49.5 185.8 V160.4 H95 Z"/>
+    <path d="M270.2 112.7 H217 C185.6 112.7 161 139.8 161 172.5 C161 205.7 185.6 232.5 217 232.5 H270.2 L212.1 172.5 Z"/>
   </g>
 </svg>
