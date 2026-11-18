@@ -84,7 +84,7 @@ Recharts · Zustand (persistencia local) · Three.js + React Three Fiber + Drei 
   arrastre, pantalla completa, soporte PDF por `<object>`. Marcados como ilustrativos.
 - **Cotización rápida**: cliente, proyecto, descripción, ítems múltiples (categoría, unidad,
   cantidad, precio), descuento, AIU opcional, IVA opcional (sobre la utilidad cuando hay AIU),
-  validación, vista previa y guardado como borrador (localStorage).
+  validación, vista previa y guardado como borrador (en Supabase; en modo local, en el navegador).
 - **Dashboard inferior**: cotizaciones (total, aprobadas/pendientes, distribución por categoría),
   materiales (recibido vs. previsto con unidades reales), inventario (referencias, stock bajo,
   movimientos por semana — se cuentan movimientos, nunca se suman unidades distintas), finanzas en
