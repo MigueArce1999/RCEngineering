@@ -51,6 +51,16 @@ La migración `20261119010000_rc_onboarding.sql` borró los datos de demostraci�
 (`supabase/seed.sql` queda solo como referencia). Cada proyecto se carga paso a paso desde la app;
 ver el análisis en [docs/ONBOARDING-UX.md](docs/ONBOARDING-UX.md).
 
+### Modelo 3D propio de cada proyecto
+Desde el visor (**Cargar modelo**, roles con *Gestionar proyectos*) se sube el modelo como archivo
+`.html` autocontenido (por ejemplo el visor three.js del proyecto). Se guarda en el bucket privado
+`project-models` y se muestra en un `iframe` aislado (`sandbox` sin `allow-same-origin`): no puede leer
+la sesión ni los datos de la app. Lo que el modelo guarda en `localStorage` (p. ej. alturas) se
+persiste en `projects.model_settings` para todo el equipo.
+
+El visor solo captura la rueda y los gestos **después de un clic** sobre el modelo (o en la vista 3D
+ampliada); antes, la rueda desplaza la página.
+
 ### Roles
 
 | Rol | Ver | Actividades | Etapas | Cotizaciones | Usuarios |

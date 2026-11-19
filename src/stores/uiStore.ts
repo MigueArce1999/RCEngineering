@@ -44,6 +44,9 @@ interface UIState {
   // Visor 3D
   immersive: boolean;
   setImmersive: (v: boolean) => void;
+  /** El visor captura rueda/gestos solo tras un clic (evita secuestrar el scroll de la página) */
+  viewerActive: boolean;
+  setViewerActive: (v: boolean) => void;
   viewMode: ViewMode;
   setViewMode: (m: ViewMode) => void;
   visibleLevel: 1 | 2 | 3;
@@ -100,6 +103,8 @@ export const useUI = create<UIState>()((set) => ({
 
   immersive: false,
   setImmersive: (immersive) => set({ immersive }),
+  viewerActive: false,
+  setViewerActive: (viewerActive) => set({ viewerActive }),
   viewMode: "architectural",
   setViewMode: (viewMode) => set({ viewMode }),
   visibleLevel: 3,

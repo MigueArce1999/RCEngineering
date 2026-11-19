@@ -19,15 +19,18 @@ import {
   Rotate3d,
   RotateCcw,
   Shrink,
+  Upload,
   ZoomIn,
 } from "lucide-react";
-import { Component, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/format";
 import { useUI, type CameraPreset, type PointerTool, type ViewMode } from "@/stores/uiStore";
 import { GlassButton, Skeleton } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 import { ELEMENT_STATUS_LABEL } from "@/lib/domain";
 import { ProjectInfoCard } from "@/components/dashboard/ProjectInfoCard";
+import { useCan } from "@/stores/authStore";
+import { ProjectModelFrame } from "./ProjectModelFrame";
 import { useProjectStore } from "@/stores/projectStore";
 import { ElementInspector } from "./ElementInspector";
 
@@ -89,6 +92,36 @@ export function ArchitecturalViewer() {
   const openBlueprints = useUI((s) => s.openBlueprints);
   const goToCamera = useUI((s) => s.goToCamera);
   const remote = useProjectStore((s) => s.source === "remote");
+  const project = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId));
+  const saveModelSettings = useProjectStore((s) => s.saveModelSettings);
+  const uploadModel = useProjectStore((s) => s.uploadModel);
+  const removeModel = useProjectStore((s) => s.removeModel);
+  const canManage = useCan("projects.manage");
+  const toast = useUI((s) => s.toast);
+  const active = useUI((s) => s.viewerActive);
+  const setActive = useUI((s) => s.setViewerActive);
+  const interactive = immersive || active;
+  const modelPath = remote ? project?.modelPath ?? null : null;
+  const [wheelHint, setWheelHint] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const hintTimer = useRef<number | undefined>(undefined);
+  const onModelSettings = useCallback((v: Record<string, string>) => void saveModelSettings(v), [saveModelSettings]);
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (!/\.html?$/i.test(file.name)) return toast({ title: "Formato no compatible", description: "Por ahora se admite el modelo como archivo .html autocontenido.", tone: "warning" });
+    setUploading(true);
+    const ok = await uploadModel(file);
+    setUploading(false);
+    if (ok) toast({ title: "Modelo 3D cargado", description: file.name });
+  };
+  const flashWheelHint = () => {
+    setWheelHint(true);
+    window.clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => setWheelHint(false), 1800);
+  };
   const webgl = useSyncExternalStore(noopSubscribe, detectWebGL, () => true);
   const rootRef = useRef<HTMLDivElement>(null);
   const [interacted, setInteracted] = useState(false);
@@ -143,8 +176,21 @@ export function ArchitecturalViewer() {
         transition={{ duration: 1.1, delay: 0.12, ease: [0.32, 0.72, 0, 1] }}
         aria-label="Visualizador arquitectónico 3D"
         className="viewer-backdrop relative h-full w-full overflow-hidden rounded-[28px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.7),var(--shadow-md)]"
-        onPointerDown={() => setInteracted(true)}
+        onPointerDown={() => {
+          setInteracted(true);
+          setActive(true);
+        }}
+        onPointerLeave={() => !immersive && setActive(false)}
+        onWheel={() => !interactive && flashWheelHint()}
       >
+        <input ref={fileRef} type="file" accept=".html,.htm,text/html" className="hidden" onChange={(e) => {
+          void onFile(e.target.files?.[0]);
+          e.target.value = "";
+        }} />
+        {modelPath ? (
+          <ProjectModelFrame path={modelPath} settings={project?.modelSettings ?? {}} interactive={interactive} onActivate={() => setActive(true)} onSettings={onModelSettings} />
+        ) : (
+        <>
         <div className="absolute inset-0">
           {webgl ? (
             <CanvasBoundary fallback={<NoWebGL onPlans={() => openBlueprints()} reason="error" />}>
@@ -241,8 +287,15 @@ export function ArchitecturalViewer() {
         {/* En proyectos reales el modelo es de referencia hasta cargar el GLB/IFC propio */}
         {remote && (
           <div className="pointer-events-none absolute top-[64px] left-3 sm:top-[68px] sm:left-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1 text-[12px] font-medium text-[#7c5314] shadow-[var(--shadow-xs)]">
+            <span className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-warning-soft py-1 pr-1 pl-3 text-[12px] font-medium text-[#7c5314] shadow-[var(--shadow-xs)]">
               <Info size={13} /> Modelo de referencia · aún no hay modelo 3D de este proyecto
+              {canManage ? (
+                <button onClick={() => fileRef.current?.click()} disabled={uploading} className="ml-1 inline-flex h-6 items-center gap-1 rounded-full bg-brand px-2.5 text-[12px] font-semibold text-white transition hover:bg-brand-2 disabled:opacity-60">
+                  <Upload size={12} /> {uploading ? "Cargando…" : "Cargar modelo"}
+                </button>
+              ) : (
+                <span className="pr-2" />
+              )}
             </span>
           </div>
         )}
@@ -262,7 +315,80 @@ export function ArchitecturalViewer() {
           )}
         </AnimatePresence>
 
-        {immersive && (
+        </>
+        )}
+
+        {/* Rueda sin activar: aviso breve en lugar de mover el modelo */}
+        <AnimatePresence>
+          {wheelHint && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#10291f]/75 px-4 py-2 text-[13px] font-medium text-white backdrop-blur-md"
+            >
+              Haz clic sobre el modelo para usar la rueda · o entra a la vista 3D
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {modelPath && (
+          <>
+            <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 sm:bottom-4">
+              <div className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1">
+                <button onClick={() => setInfoOpen((v) => !v)} aria-pressed={infoOpen} className={cn("h-9 rounded-full px-3.5 text-[13px] font-medium transition", infoOpen ? "bg-white text-ink shadow-[var(--shadow-sm)]" : "text-ink-2 hover:text-ink")}>
+                  Ficha del proyecto
+                </button>
+                {canManage && (
+                  <Dropdown.Root>
+                    <Dropdown.Trigger asChild>
+                      <button className="h-9 rounded-full px-3.5 text-[13px] font-medium text-ink-2 transition hover:text-ink">Modelo</button>
+                    </Dropdown.Trigger>
+                    <Dropdown.Portal>
+                      <Dropdown.Content side="top" sideOffset={8} className="anim-pop glass-float z-[55] w-56 rounded-[16px] p-1.5">
+                        <Dropdown.Item onSelect={() => fileRef.current?.click()} className="cursor-pointer rounded-[10px] px-3 py-2 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-2">
+                          Reemplazar modelo…
+                        </Dropdown.Item>
+                        <Dropdown.Item
+                          onSelect={async () => {
+                            if (await removeModel()) toast({ title: "Modelo quitado", description: "Se muestra de nuevo el modelo de referencia.", tone: "info" });
+                          }}
+                          className="cursor-pointer rounded-[10px] px-3 py-2 text-[13px] text-danger outline-none data-[highlighted]:bg-danger-soft"
+                        >
+                          Quitar modelo
+                        </Dropdown.Item>
+                      </Dropdown.Content>
+                    </Dropdown.Portal>
+                  </Dropdown.Root>
+                )}
+                <Tooltip content="Pantalla completa del navegador">
+                  <button onClick={toggleFullscreen} className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:text-ink" aria-label="Pantalla completa">
+                    <Maximize2 size={16} />
+                  </button>
+                </Tooltip>
+                {immersive ? (
+                  <GlassButton variant="primary" size="sm" icon={<Shrink size={15} />} onClick={() => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setImmersive(false); }}>
+                    Salir
+                  </GlassButton>
+                ) : (
+                  <GlassButton variant="primary" size="sm" icon={<Expand size={15} />} onClick={() => setImmersive(true)}>
+                    Vista 3D
+                  </GlassButton>
+                )}
+              </div>
+            </div>
+            <AnimatePresence>
+              {infoOpen && (
+                <motion.div className="absolute right-3 bottom-20 w-[356px] max-w-[calc(100%-24px)] sm:right-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}>
+                  <ProjectInfoCard />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+
+        {!modelPath && immersive && (
           <div className="pointer-events-auto absolute right-4 bottom-4 hidden gap-2 md:flex">
             <GlassButton variant="glass" size="sm" onClick={() => setPanels((p) => ({ ...p, info: !p.info }))} aria-pressed={panels.info}>
               {panels.info ? "Ocultar" : "Mostrar"} información

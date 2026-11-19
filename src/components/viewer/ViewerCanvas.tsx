@@ -27,6 +27,7 @@ function CameraRig() {
   const ref = useRef<CameraControls>(null);
   const preset = useUI((s) => s.cameraPreset);
   const tool = useUI((s) => s.pointerTool);
+  const interactive = useUI((s) => s.immersive || s.viewerActive);
   const focusNonce = useUI((s) => s.focusElementNonce);
   const viewMode = useUI((s) => s.viewMode);
   const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -75,14 +76,18 @@ function CameraRig() {
     window.setTimeout(() => (c.smoothTime = 0.32), 2800);
   });
 
-  // Herramienta del puntero: orbitar / desplazar / zoom con el botón principal
+  // Herramienta del puntero: orbitar / desplazar / zoom con el botón principal.
+  // Mientras el visor no esté activo (sin clic previo), la rueda y el dedo desplazan la página.
   useEffect(() => {
     const c = readControls();
     if (!c) return;
     c.mouseButtons.left = tool === "orbit" ? ACTION.ROTATE : tool === "pan" ? ACTION.TRUCK : ACTION.DOLLY;
-    c.touches.one = tool === "orbit" ? ACTION.TOUCH_ROTATE : tool === "pan" ? ACTION.TOUCH_TRUCK : ACTION.DOLLY;
+    c.mouseButtons.wheel = interactive ? ACTION.DOLLY : ACTION.NONE;
+    c.touches.one = !interactive ? ACTION.NONE : tool === "orbit" ? ACTION.TOUCH_ROTATE : tool === "pan" ? ACTION.TOUCH_TRUCK : ACTION.DOLLY;
+    c.touches.two = interactive ? ACTION.TOUCH_DOLLY_TRUCK : ACTION.NONE;
+    getState().gl.domElement.style.touchAction = interactive ? "none" : "pan-y";
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool, hasControls]);
+  }, [tool, hasControls, interactive]);
 
   // Encuadrar un elemento seleccionado desde búsqueda o actividades
   useEffect(() => {

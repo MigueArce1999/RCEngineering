@@ -65,6 +65,8 @@ const toProject = (r: Row): Project => ({
   description: r.description ?? "",
   currency: r.currency ?? "COP",
   setupSkipped: r.setup_skipped ?? [],
+  modelPath: r.model_path ?? null,
+  modelSettings: r.model_settings ?? {},
 });
 
 const toNote = (r: Row): TaskNote => ({ id: r.id, text: r.text, createdAt: r.created_at, authorId: r.author_id ?? "" });
@@ -337,4 +339,29 @@ export async function deleteMaterial(id: string) {
 
 export async function insertMovement(m: InventoryMovement) {
   affected(await db().from("inventory_movements").insert({ id: m.id, material_id: m.materialId, type: m.type, qty: m.qty, date: m.date, reference: m.reference }).select("id"));
+}
+
+// ── Modelo 3D del proyecto (Storage privado) ────────────────────────────
+const MODEL_BUCKET = "project-models";
+
+export async function uploadProjectModel(projectId: string, file: File) {
+  const path = `${projectId}/modelo-${Date.now()}.html`;
+  const up = await db().storage.from(MODEL_BUCKET).upload(path, file, { contentType: "text/html", upsert: false });
+  if (up.error) throw new Error(up.error.message);
+  affected(await db().from("projects").update({ model_path: path, model_settings: {} }).eq("id", projectId).select("id"));
+  return path;
+}
+
+export async function removeProjectModel(projectId: string) {
+  affected(await db().from("projects").update({ model_path: null }).eq("id", projectId).select("id"));
+}
+
+export async function downloadProjectModel(path: string) {
+  const { data, error } = await db().storage.from(MODEL_BUCKET).download(path);
+  if (error || !data) throw new Error(error?.message ?? "No se pudo descargar el modelo");
+  return data.text();
+}
+
+export async function saveModelSettings(projectId: string, settings: Record<string, string>) {
+  affected(await db().from("projects").update({ model_settings: settings }).eq("id", projectId).select("id"));
 }

@@ -79,6 +79,9 @@ interface ProjectState extends Catalog {
   addMaterial: (input: Omit<Material, "id" | "receivedQty" | "consumedQty">, initialReceived: number) => Promise<boolean>;
   removeMaterial: (id: string) => Promise<boolean>;
   addMovement: (input: Omit<InventoryMovement, "id">) => Promise<boolean>;
+  uploadModel: (file: File) => Promise<boolean>;
+  removeModel: () => Promise<boolean>;
+  saveModelSettings: (settings: Record<string, string>) => Promise<boolean>;
 }
 
 const demoCatalog = (): Catalog => ({
@@ -396,6 +399,32 @@ export const useProjectStore = create<ProjectState>()(
           const ok = await attempt("movimiento de inventario", () => api.insertMovement({ ...input, id: uid("mov") }));
           if (ok) await get().load();
           return ok;
+        },
+
+        uploadModel: async (file) => {
+          if (!guard("projects.manage")) return false;
+          const ok = await attempt("modelo 3D", () => api.uploadProjectModel(get().projectId, file));
+          if (ok) await get().load();
+          return ok;
+        },
+
+        removeModel: async () => {
+          if (!guard("projects.manage")) return false;
+          const ok = await attempt("modelo 3D", () => api.removeProjectModel(get().projectId));
+          if (ok) set((s) => ({ projects: s.projects.map((p) => (p.id === s.projectId ? { ...p, modelPath: null } : p)) }));
+          return ok;
+        },
+
+        // Silencioso: los ajustes del modelo (p. ej. alturas) se guardan sin avisos si el rol lo permite
+        saveModelSettings: async (settings) => {
+          set((s) => ({ projects: s.projects.map((p) => (p.id === s.projectId ? { ...p, modelSettings: settings } : p)) }));
+          if (!isRemote || !can("projects.manage")) return false;
+          try {
+            await api.saveModelSettings(get().projectId, settings);
+            return true;
+          } catch {
+            return false;
+          }
         },
 
         resetDemo: () => {

@@ -29,6 +29,10 @@ export interface Project {
   currency?: string;
   /** Pasos opcionales del asistente marcados como "no aplica" */
   setupSkipped?: string[];
+  /** Ruta del modelo 3D propio en Supabase Storage (bucket privado project-models) */
+  modelPath?: string | null;
+  /** Ajustes guardados por el modelo embebido (p. ej. alturas) */
+  modelSettings?: Record<string, string>;
 }
 
 export type StageIcon = "survey" | "design" | "build" | "finish" | "generic";
