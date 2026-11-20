@@ -141,6 +141,7 @@ const PERM_LABEL: Record<Permission, string> = {
   "projects.manage": "gestionar proyectos",
   "finance.manage": "gestionar finanzas",
   "inventory.manage": "gestionar materiales e inventario",
+  "payroll.manage": "gestionar la nómina",
   "tasks.edit": "gestionar actividades",
   "stages.manage": "gestionar etapas",
   "quotes.manage": "gestionar cotizaciones",

@@ -22,6 +22,7 @@ import {
   LogOut,
   User,
   Users,
+  Wallet,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn, relativeDue } from "@/lib/format";
@@ -42,7 +43,15 @@ export const NAV_ITEMS: { key: ModuleKey; label: string; icon: typeof House; hin
   { key: "materials", label: "Materiales", icon: Boxes, hint: "Abastecimiento de materiales" },
   { key: "inventory", label: "Inventario", icon: Package, hint: "Bodega y movimientos" },
   { key: "finance", label: "Finanzas", icon: ChartColumn, hint: "Presupuesto y ejecución" },
+  { key: "payroll", label: "Nómina", icon: Wallet, hint: "Pagos quincenales y mensuales del personal de obra" },
 ];
+
+/** Módulos visibles según el rol (la nómina es información sensible). */
+function useNavItems() {
+  const canPayroll = useCan("payroll.manage");
+  const remote = useProjectStore((s) => s.source === "remote");
+  return NAV_ITEMS.filter((i) => i.key !== "payroll" || (remote && canPayroll));
+}
 
 export function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
@@ -93,6 +102,7 @@ export function Navbar() {
   const setCommandOpen = useUI((s) => s.setCommandOpen);
   const navigate = navigateTo;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navItems = useNavItems();
 
   const active: ModuleKey = blueprintOpen ? "blueprints" : immersive ? "viewer3d" : activeModule;
 
@@ -103,7 +113,7 @@ export function Navbar() {
 
         <nav aria-label="Módulos" className="mx-auto hidden xl:block">
           <ul className="flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const isActive = active === item.key;
               const Icon = item.icon;
               return (
@@ -113,7 +123,7 @@ export function Navbar() {
                       onClick={() => navigate(item.key)}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
-                        "relative flex h-[54px] min-w-[64px] flex-col items-center justify-center gap-1 rounded-[14px] px-3 text-[12px] font-medium transition-colors duration-150",
+                        "relative flex h-[54px] min-w-[58px] flex-col items-center justify-center gap-1 rounded-[14px] px-2.5 2xl:px-3 text-[12px] font-medium transition-colors duration-150",
                         isActive ? "text-white" : "text-ink-2 hover:bg-surface-2/80 hover:text-ink",
                       )}
                     >
@@ -137,7 +147,7 @@ export function Navbar() {
         <div className="ml-auto flex items-center gap-2 xl:ml-0">
           <button
             onClick={() => setCommandOpen(true)}
-            className="glass hidden h-10 w-[260px] items-center gap-2.5 rounded-full px-3.5 text-left text-[13px] text-ink-3 transition hover:text-ink-2 md:flex 2xl:w-[300px]"
+            className="glass hidden h-10 w-[260px] items-center gap-2.5 rounded-full px-3.5 text-left text-[13px] text-ink-3 transition hover:text-ink-2 md:flex xl:w-[200px] 2xl:w-[300px]"
             aria-label="Buscar proyecto, plano, material (Ctrl + K)"
           >
             <Search size={17} className="text-ink-2" />
@@ -163,7 +173,7 @@ export function Navbar() {
       {mobileOpen && (
         <nav aria-label="Módulos" className="border-t border-line/60 px-4 pb-3 xl:hidden">
           <ul className="grid grid-cols-4 gap-1 pt-2 sm:grid-cols-8">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = active === item.key;
               return (

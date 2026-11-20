@@ -61,6 +61,13 @@ persiste en `projects.model_settings` para todo el equipo.
 El visor solo captura la rueda y los gestos **después de un clic** sobre el modelo (o en la vista 3D
 ampliada); antes, la rueda desplaza la página.
 
+### Nómina de obra
+Módulo **Nómina** (barra superior; visible para Administrador, Director y Presupuestos, permiso
+`payroll.manage`). Trabajadores con cargo y valor día; liquidaciones quincenales (1–15 / 16–fin) o
+mensuales con días trabajados, valor día, extras y descuentos por persona. Total = días × valor día
++ extras − descuentos. Al **marcar como pagada** se registra el gasto de mano de obra en Finanzas
+(se elimina si se reabre). Exporta a CSV para Excel. No calcula seguridad social ni prestaciones.
+
 ### Roles
 
 | Rol | Ver | Actividades | Etapas | Cotizaciones | Usuarios |

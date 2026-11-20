@@ -10,6 +10,7 @@ import { DEMO_BASE_DATE } from "@/data/demo";
 import { useCatalog } from "@/hooks/useCatalog";
 import { useAuth } from "@/stores/authStore";
 import { UsersPanel } from "./UsersPanel";
+import { PayrollPanel } from "@/components/payroll/PayrollPanel";
 import { COST_CATEGORY_LABEL, STAGE_STATUS_LABEL, inventoryItems, quoteTotals } from "@/lib/domain";
 import { cn, formatCOP, formatDate, formatNumber, formatPct } from "@/lib/format";
 import { Drawer, Modal } from "@/components/ui/overlays";
@@ -69,6 +70,7 @@ export function ModulePanels() {
       <ProjectDetailModal />
       <SettingsModal />
       <UsersPanel />
+      <PayrollPanel />
     </>
   );
 }

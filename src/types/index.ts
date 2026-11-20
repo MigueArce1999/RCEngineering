@@ -219,3 +219,40 @@ export interface Activity {
   label: string;
   date: ISODate;
 }
+
+// ── Nómina ──────────────────────────────────────────────────────────────
+export interface Worker {
+  id: ID;
+  projectId: ID;
+  name: string;
+  document: string;
+  role: string;
+  dailyRate: number;
+  active: boolean;
+}
+
+export type PayrollKind = "biweekly" | "monthly";
+
+export interface PayrollEntry {
+  id: ID;
+  workerId: ID | null;
+  workerName: string;
+  role: string;
+  days: number;
+  dailyRate: number;
+  extras: number;
+  deductions: number;
+}
+
+export interface PayrollPeriod {
+  id: ID;
+  projectId: ID;
+  kind: PayrollKind;
+  startDate: ISODate;
+  endDate: ISODate;
+  status: "draft" | "paid";
+  paidAt: ISODate | null;
+  expenseId: ID | null;
+  notes: string;
+  entries: PayrollEntry[];
+}

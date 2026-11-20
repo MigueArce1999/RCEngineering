@@ -13,6 +13,7 @@ export type Permission =
   | "quotes.manage"
   | "finance.manage"
   | "inventory.manage"
+  | "payroll.manage"
   | "users.manage";
 
 export interface Profile {
