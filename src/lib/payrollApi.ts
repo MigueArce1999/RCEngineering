@@ -67,16 +67,21 @@ export async function createPeriod(p: PayrollPeriod) {
   await saveEntries(p.id, p.entries);
 }
 
-/** Reemplaza las líneas del periodo (borrador) por las actuales. */
+/**
+ * Guarda las líneas del periodo: actualiza/inserta las actuales y elimina las que se quitaron.
+ * Idempotente (por id), así varios guardados automáticos seguidos no se pisan ni duplican filas.
+ */
 export async function saveEntries(periodId: string, entries: PayrollEntry[]) {
-  check(await db().from("payroll_entries").delete().eq("period_id", periodId).select("id"));
   if (entries.length)
-    affected(
+    check(
       await db()
         .from("payroll_entries")
-        .insert(entries.map((e, i) => ({ id: e.id, period_id: periodId, worker_id: e.workerId, worker_name: e.workerName, role: e.role, days: e.days, daily_rate: e.dailyRate, extras: e.extras, deductions: e.deductions, sort_order: i })))
+        .upsert(entries.map((e, i) => ({ id: e.id, period_id: periodId, worker_id: e.workerId, worker_name: e.workerName, role: e.role, days: e.days, daily_rate: e.dailyRate, extras: e.extras, deductions: e.deductions, sort_order: i })))
         .select("id"),
     );
+  let del = db().from("payroll_entries").delete().eq("period_id", periodId);
+  if (entries.length) del = del.not("id", "in", `(${entries.map((e) => `"${e.id}"`).join(",")})`);
+  check(await del.select("id"));
 }
 
 export async function deletePeriod(id: string) {

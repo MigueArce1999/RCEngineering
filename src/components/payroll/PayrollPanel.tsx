@@ -2,12 +2,13 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Download, Plus, RotateCcw, Save, Trash2, UserPlus, Users, Wallet, X } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from "react";
+import { Check, CloudOff, Download, FileText, Loader2, Plus, RotateCcw, Trash2, UserPlus, Users, Wallet, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from "react";
 import type { PayrollEntry, PayrollKind, PayrollPeriod, Worker } from "@/types";
 import { usePayroll } from "@/stores/payrollStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUI } from "@/stores/uiStore";
+import { useAuth } from "@/stores/authStore";
 import { KIND_LABEL, WORKER_ROLES, entrySubtotal, entryTotal, payrollCSV, periodDays, periodSummary, periodTitle } from "@/lib/payroll";
 import { cn, formatCOP, formatDate, formatNumber, todayISO, uid } from "@/lib/format";
 import { GlassButton, Skeleton, StatusBadge } from "@/components/ui/primitives";
@@ -264,6 +265,28 @@ function PeriodsView({ projectName, goWorkers }: { projectName: string; goWorker
   );
 }
 
+function SaveStatus({ saving, pending, error, onRetry }: { saving: boolean; pending: boolean; error: boolean; onRetry: () => void }) {
+  if (error && !saving)
+    return (
+      <button onClick={onRetry} className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-danger hover:bg-danger-soft">
+        <CloudOff size={15} /> No se guardó · reintentar
+      </button>
+    );
+  return (
+    <span className="inline-flex h-10 items-center gap-1.5 px-2 text-[13px] text-ink-2" aria-live="polite">
+      {saving || pending ? (
+        <>
+          <Loader2 size={15} className="animate-spin" /> Guardando…
+        </>
+      ) : (
+        <>
+          <Check size={15} className="text-accent" /> Guardado automáticamente
+        </>
+      )}
+    </span>
+  );
+}
+
 function PeriodEditor({ period, projectName, onDeleted }: { period: PayrollPeriod; projectName: string; onDeleted: () => void }) {
   const workers = usePayroll((s) => s.workers);
   const saveEntries = usePayroll((s) => s.saveEntries);
@@ -272,7 +295,11 @@ function PeriodEditor({ period, projectName, onDeleted }: { period: PayrollPerio
   const reopen = usePayroll((s) => s.reopen);
   const toast = useUI((s) => s.toast);
   const [rows, setRows] = useState<PayrollEntry[]>(period.entries);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const project = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId));
+  const preparedBy = useAuth((s) => (s.profile ? `${s.profile.firstName} ${s.profile.lastName}`.trim() : ""));
   const [paidAt, setPaidAt] = useState(todayISO());
   const [confirmPay, setConfirmPay] = useState(false);
   const locked = period.status === "paid";
@@ -283,10 +310,69 @@ function PeriodEditor({ period, projectName, onDeleted }: { period: PayrollPerio
 
   const update = (id: string, patch: Partial<PayrollEntry>) => setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   const addWorker = (w: Worker) => setRows((r) => [...r, { id: uid("pye"), workerId: w.id, workerName: w.name, role: w.role, days: 0, dailyRate: w.dailyRate, extras: 0, deductions: 0 }]);
-  const save = async () => {
-    setBusy(true);
-    if (await saveEntries(period.id, rows)) toast({ title: "Liquidación guardada", description: `${periodTitle(period)} · ${formatCOP(sum.total)}` });
-    setBusy(false);
+  // ── Guardado automático ──
+  // Cada cambio se guarda solo ~0,7 s después; los guardados se encadenan (nunca en paralelo)
+  // y lo pendiente se guarda también al cerrar el módulo o cambiar de periodo.
+  const latest = useRef(rows);
+  const inFlight = useRef(false);
+  const again = useRef(false);
+  const flush = useCallback(async () => {
+    if (inFlight.current) {
+      again.current = true;
+      return;
+    }
+    inFlight.current = true;
+    setSaving(true);
+    let ok = true;
+    do {
+      again.current = false;
+      ok = await saveEntries(period.id, latest.current);
+    } while (again.current && ok);
+    inFlight.current = false;
+    setSaving(false);
+    setSaveError(!ok);
+  }, [period.id, saveEntries]);
+
+  useEffect(() => {
+    latest.current = rows;
+    if (locked || !dirty) return;
+    const id = window.setTimeout(() => void flush(), 700);
+    return () => window.clearTimeout(id);
+  }, [rows, dirty, locked, flush]);
+
+  // Al desmontar (cerrar, cambiar de periodo) se guarda lo que haya quedado pendiente
+  useEffect(() => {
+    const periodId = period.id;
+    return () => {
+      const stored = usePayroll.getState().periods.find((p) => p.id === periodId);
+      if (stored && stored.status === "draft" && JSON.stringify(stored.entries) !== JSON.stringify(latest.current)) void usePayroll.getState().saveEntries(periodId, latest.current);
+    };
+  }, [period.id]);
+
+  // Aviso del navegador si se intenta salir con cambios sin guardar
+  const pending = !locked && (dirty || saving);
+  useEffect(() => {
+    if (!pending) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [pending]);
+
+  const exportPDF = async () => {
+    setPdfBusy(true);
+    try {
+      const { downloadPayrollPdf } = await import("@/lib/payrollPdf");
+      await downloadPayrollPdf({
+        period,
+        entries: rows,
+        workers,
+        project: { name: project?.name ?? projectName, code: project?.code ?? "", clientName: project?.clientName, city: project?.city },
+        preparedBy,
+      });
+    } catch (e) {
+      toast({ title: "No se pudo generar el PDF", description: (e as Error).message, tone: "warning" });
+    }
+    setPdfBusy(false);
   };
   const exportCSV = () => {
     const blob = new Blob([payrollCSV({ ...period, entries: rows }, projectName)], { type: "text/csv;charset=utf-8" });
@@ -308,8 +394,11 @@ function PeriodEditor({ period, projectName, onDeleted }: { period: PayrollPerio
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <GlassButton variant="primary" size="sm" icon={<FileText size={15} />} onClick={() => void exportPDF()} disabled={pdfBusy}>
+            {pdfBusy ? "Generando…" : "Descargar PDF"}
+          </GlassButton>
           <GlassButton variant="outline" size="sm" icon={<Download size={15} />} onClick={exportCSV}>
-            Exportar Excel (CSV)
+            Excel (CSV)
           </GlassButton>
           {locked ? (
             <GlassButton variant="outline" size="sm" icon={<RotateCcw size={15} />} onClick={async () => (await reopen(period.id)) && toast({ title: "Liquidación reabierta", description: "Se eliminó el gasto registrado en Finanzas.", tone: "info" })}>
@@ -433,9 +522,7 @@ function PeriodEditor({ period, projectName, onDeleted }: { period: PayrollPerio
           <p className="mr-auto text-[11px] text-ink-3">No incluye aportes a seguridad social ni prestaciones sociales.</p>
           {!locked && (
             <>
-              <GlassButton variant="outline" size="md" icon={<Save size={16} />} onClick={() => void save()} disabled={busy || !dirty}>
-                {busy ? "Guardando…" : dirty ? "Guardar cambios" : "Guardado"}
-              </GlassButton>
+              <SaveStatus saving={saving} pending={dirty} error={saveError} onRetry={() => void flush()} />
               {confirmPay ? (
                 <span className="flex items-center gap-2 rounded-full bg-white py-1 pr-1 pl-3 ring-1 ring-line">
                   <span className="text-[12px] text-ink-2">Fecha de pago</span>

@@ -66,7 +66,8 @@ Módulo **Nómina** (barra superior; visible para Administrador, Director y Pres
 `payroll.manage`). Trabajadores con cargo y valor día; liquidaciones quincenales (1–15 / 16–fin) o
 mensuales con días trabajados, valor día, extras y descuentos por persona. Total = días × valor día
 + extras − descuentos. Al **marcar como pagada** se registra el gasto de mano de obra en Finanzas
-(se elimina si se reabre). Exporta a CSV para Excel. No calcula seguridad social ni prestaciones.
+(se elimina si se reabre). Cada cambio se **guarda automáticamente**. Exporta a **PDF** (liquidación con
+logo, tabla, resumen por cargo, totales y firmas) y a CSV para Excel. No calcula seguridad social ni prestaciones.
 
 ### Roles
 
