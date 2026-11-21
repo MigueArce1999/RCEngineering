@@ -70,7 +70,7 @@ export function SearchCommand() {
 
               <Command.Group heading="Planos">
                 {blueprints.map((b) => (
-                  <Item key={b.id} value={`plano ${b.code} ${b.title}`} icon={<Map size={16} />} title={`${b.code} · ${b.title}`} meta="Ilustrativo" onSelect={() => run(() => ui().openBlueprints(b.id))} />
+                  <Item key={b.id} value={`plano ${b.code} ${b.title}`} icon={<Map size={16} />} title={`${b.code} · ${b.title}`} meta={b.illustrative ? "Ilustrativo" : `${b.revision} · ${b.format.toUpperCase()}`} onSelect={() => run(() => ui().openBlueprints(b.id))} />
                 ))}
               </Command.Group>
 

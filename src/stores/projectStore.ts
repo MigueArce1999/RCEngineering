@@ -142,6 +142,7 @@ const PERM_LABEL: Record<Permission, string> = {
   "finance.manage": "gestionar finanzas",
   "inventory.manage": "gestionar materiales e inventario",
   "payroll.manage": "gestionar la nómina",
+  "documents.manage": "cargar planos y fotos",
   "tasks.edit": "gestionar actividades",
   "stages.manage": "gestionar etapas",
   "quotes.manage": "gestionar cotizaciones",
@@ -149,7 +150,7 @@ const PERM_LABEL: Record<Permission, string> = {
 };
 
 /** Bloquea la acción si el rol del usuario no tiene el permiso y lo explica. */
-function guard(perm: Permission) {
+export function guard(perm: Permission) {
   if (can(perm)) return true;
   const role = useAuth.getState().profile?.roleName ?? "actual";
   useUI.getState().toast({

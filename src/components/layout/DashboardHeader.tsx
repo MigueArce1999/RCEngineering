@@ -1,7 +1,7 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Check, ChevronDown, Pencil, Plus } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Share2 } from "lucide-react";
 import { useCatalog } from "@/hooks/useCatalog";
 import { useCan } from "@/stores/authStore";
 import { useUI } from "@/stores/uiStore";
@@ -22,9 +22,17 @@ export function WelcomeHeading() {
 
 export function HeaderActions() {
   const setQuickQuoteOpen = useUI((s) => s.setQuickQuoteOpen);
+  const openDocs = useUI((s) => s.openDocs);
+  const remote = useProjectStore((s) => s.source === "remote");
+  const canShare = useCan("projects.manage");
   return (
     <div className="flex flex-wrap items-center justify-end gap-2.5">
       <ProjectSelector />
+      {remote && canShare && (
+        <GlassButton variant="glass" size="lg" icon={<Share2 size={17} />} onClick={() => openDocs("guests")} className="px-4" aria-label="Compartir con invitados">
+          <span className="hidden sm:inline">Compartir</span>
+        </GlassButton>
+      )}
       <GlassButton variant="primary" size="lg" icon={<Plus size={18} strokeWidth={2} />} onClick={() => setQuickQuoteOpen(true)} className="px-5">
         Cotización rápida
       </GlassButton>

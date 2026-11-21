@@ -3,6 +3,7 @@
 import { Loader2, MousePointerClick } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadProjectModel } from "@/lib/api";
+import { cn } from "@/lib/format";
 
 /**
  * Muestra el modelo 3D propio del proyecto (HTML autocontenido subido a Storage).
@@ -56,6 +57,9 @@ export function ProjectModelFrame({
   compact,
   onActivate,
   onSettings,
+  load = downloadProjectModel,
+  pauseWhenCovered = true,
+  dark = false,
 }: {
   path: string;
   settings: Record<string, string>;
@@ -63,7 +67,12 @@ export function ProjectModelFrame({
   /** Solo la casa (dashboard) o el visor completo con sus paneles (vista 3D) */
   compact: boolean;
   onActivate: () => void;
-  onSettings: (s: Record<string, string>) => void;
+  onSettings?: (s: Record<string, string>) => void;
+  /** Descarga del HTML del modelo (por defecto, con la sesión del usuario) */
+  load?: (path: string) => Promise<string>;
+  /** Pausar el modelo mientras un diálogo cubre la página */
+  pauseWhenCovered?: boolean;
+  dark?: boolean;
 }) {
   const [html, setHtml] = useState<string | null>(cache.get(path) ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +81,7 @@ export function ProjectModelFrame({
   useEffect(() => {
     if (cache.has(path)) return;
     let alive = true;
-    downloadProjectModel(path)
+    load(path)
       .then((text) => {
         cache.set(path, text);
         if (alive) setHtml(text);
@@ -81,12 +90,12 @@ export function ProjectModelFrame({
     return () => {
       alive = false;
     };
-  }, [path]);
+  }, [path, load]);
 
   // Mensajes del puente de almacenamiento (solo del iframe propio)
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (e.source !== frame.current?.contentWindow || !e.data?.__rcModel) return;
+      if (!onSettings || e.source !== frame.current?.contentWindow || !e.data?.__rcModel) return;
       const next = e.data.data as Record<string, unknown>;
       const clean = Object.fromEntries(Object.entries(next).filter(([, v]) => typeof v === "string")) as Record<string, string>;
       onSettings(clean);
@@ -102,7 +111,7 @@ export function ProjectModelFrame({
     frame.current?.contentWindow?.postMessage({ __rcView: compact ? "compact" : "full" }, "*");
   }, [compact]);
   // Con una pantalla abierta encima, el modelo se pausa (queda su última imagen) y libera la GPU
-  const covered = useOverlayOpen();
+  const covered = useOverlayOpen() && pauseWhenCovered;
   const coveredRef = useRef(covered);
   useEffect(() => {
     coveredRef.current = covered;
@@ -135,7 +144,7 @@ export function ProjectModelFrame({
       )}
       {!srcDoc && !error && (
         <div className="absolute inset-0 grid place-items-center">
-          <p className="flex items-center gap-2 text-[13px] font-medium text-ink-2">
+          <p className={cn("flex items-center gap-2 text-[13px] font-medium", dark ? "text-white/70" : "text-ink-2")}>
             <Loader2 size={16} className="animate-spin" /> Cargando el modelo del proyecto…
           </p>
         </div>

@@ -24,7 +24,7 @@ import { ActivityTimeline, FinanceOverview, InventoryWidget, MaterialsWidget, Qu
 // Pantallas secundarias: se cargan aparte y se precargan en segundo plano
 const ModulePanels = dynamic(() => loaders.panels().then((m) => m.ModulePanels), { ssr: false });
 const QuickQuoteModal = dynamic(() => loaders.quote().then((m) => m.QuickQuoteModal), { ssr: false });
-const BlueprintViewer = dynamic(() => loaders.blueprints().then((m) => m.BlueprintViewer), { ssr: false });
+const DocsWorkspace = dynamic(() => loaders.blueprints().then((m) => m.DocsWorkspace), { ssr: false });
 const SearchCommand = dynamic(() => loaders.search().then((m) => m.SearchCommand), { ssr: false });
 
 // Entrada estilo Apple: sube y aparece con frenado largo (solo transform/opacity: fluido en la GPU)
@@ -155,7 +155,7 @@ function Dashboard() {
         <SetupWizard />
         <StageDetailDrawer />
         <QuickQuoteModal />
-        <BlueprintViewer />
+        <DocsWorkspace />
         <ModulePanels />
         <SearchCommand />
         <Toaster />

@@ -45,6 +45,26 @@ export interface ProjectBundle {
   approvedBudget: number;
 }
 
+export const toBlueprint = (b: Row): Blueprint => ({
+  id: b.id,
+  code: b.code,
+  title: b.title,
+  category: b.category,
+  level: b.level,
+  format: b.format,
+  src: b.src,
+  revision: b.revision,
+  illustrative: b.illustrative,
+  filePath: b.file_path,
+  fileName: b.file_name,
+  fileSize: Number(b.file_size ?? 0),
+  mime: b.mime,
+  notes: b.notes,
+  uploadedAt: b.uploaded_at,
+  sortOrder: b.sort_order,
+  thumbPath: b.thumb_path,
+});
+
 const num = (v: unknown) => (v === null || v === undefined ? 0 : Number(v));
 
 const toProject = (r: Row): Project => ({
@@ -186,7 +206,7 @@ export async function loadProjectBundle(projectId: string): Promise<ProjectBundl
     movements: movements.map((m) => ({ id: m.id, materialId: m.material_id, type: m.type, qty: num(m.qty), date: m.date, reference: m.reference })),
     expenses: expenses.map((e) => ({ id: e.id, date: e.date, concept: e.concept, category: e.category, amount: num(e.amount) })),
     plannedCurve: curve.map((c2) => ({ date: c2.date, amount: num(c2.amount) })),
-    blueprints: blueprints.map((b) => ({ id: b.id, code: b.code, title: b.title, category: b.category, level: b.level, format: b.format, src: b.src, revision: b.revision, illustrative: b.illustrative })),
+    blueprints: blueprints.map(toBlueprint),
     approvedBudget: num(project?.approved_budget),
   };
 }

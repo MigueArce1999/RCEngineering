@@ -186,12 +186,55 @@ export interface Blueprint {
   code: string;
   title: string;
   category: BlueprintCategory;
-  level: "N1" | "N2" | "Cubierta" | "General";
-  format: "svg" | "png" | "pdf";
+  /** Nivel o zona: "N1", "N2", "Cubierta", "General"… (texto libre en planos cargados) */
+  level: string;
+  format: "svg" | "png" | "jpg" | "webp" | "pdf";
+  /** Ruta pública (planos de demostración) */
   src: string;
   revision: string;
   /** Los planos de demostración son ilustrativos y no aptos para construcción */
   illustrative: boolean;
+  /** Archivo en el bucket privado project-blueprints (planos cargados) */
+  filePath?: string | null;
+  fileName?: string;
+  fileSize?: number;
+  mime?: string;
+  notes?: string;
+  uploadedAt?: string;
+  sortOrder?: number;
+  /** Miniatura JPG en el mismo bucket */
+  thumbPath?: string | null;
+}
+
+/** Foto del registro de obra */
+export interface SitePhoto {
+  id: ID;
+  projectId: ID;
+  stageId: ID | null;
+  filePath: string;
+  thumbPath: string;
+  caption: string;
+  takenAt: string;
+  width: number;
+  height: number;
+  createdAt: string;
+}
+
+/** Enlace de acceso para invitados */
+export interface ProjectShare {
+  id: ID;
+  projectId: ID;
+  token: string;
+  label: string;
+  showProgress: boolean;
+  showModel: boolean;
+  showPhotos: boolean;
+  showBlueprints: boolean;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  viewCount: number;
+  lastViewedAt: string | null;
+  createdAt: string;
 }
 
 export type ElementType = "wall" | "column" | "beam" | "slab" | "roof" | "door" | "window" | "footing" | "railing" | "stair";

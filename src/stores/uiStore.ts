@@ -4,6 +4,8 @@ import { create } from "zustand";
 
 export type ModuleKey = "home" | "projects" | "blueprints" | "viewer3d" | "quotes" | "materials" | "inventory" | "finance" | "payroll" | "users";
 
+export type DocsTab = "blueprints" | "photos" | "guests";
+
 export type ViewMode = "architectural" | "structural" | "roof" | "levels" | "progress" | "exploded" | "electrical" | "plumbing";
 export type CameraPreset = "iso" | "front" | "back" | "side" | "top";
 export type PointerTool = "orbit" | "pan" | "zoom";
@@ -38,7 +40,11 @@ interface UIState {
 
   blueprintId: string | null;
   blueprintOpen: boolean;
+  /** Pestaña del módulo "Planos y obra" */
+  docsTab: DocsTab;
+  setDocsTab: (t: DocsTab) => void;
   openBlueprints: (id?: string | null) => void;
+  openDocs: (tab: DocsTab) => void;
   closeBlueprints: () => void;
 
   // Visor 3D
@@ -98,7 +104,10 @@ export const useUI = create<UIState>()((set) => ({
 
   blueprintId: null,
   blueprintOpen: false,
-  openBlueprints: (id = null) => set((s) => ({ blueprintOpen: true, blueprintId: id ?? s.blueprintId })),
+  docsTab: "blueprints",
+  setDocsTab: (docsTab) => set({ docsTab }),
+  openBlueprints: (id = null) => set((s) => ({ blueprintOpen: true, docsTab: "blueprints", blueprintId: id ?? s.blueprintId })),
+  openDocs: (docsTab) => set({ blueprintOpen: true, docsTab }),
   closeBlueprints: () => set({ blueprintOpen: false }),
 
   immersive: false,

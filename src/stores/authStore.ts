@@ -14,6 +14,7 @@ export type Permission =
   | "finance.manage"
   | "inventory.manage"
   | "payroll.manage"
+  | "documents.manage"
   | "users.manage";
 
 export interface Profile {

@@ -10,7 +10,7 @@ import { can } from "@/stores/authStore";
 export const loaders = {
   panels: () => import("@/components/modules/ModulePanels"),
   quote: () => import("@/components/quotes/QuickQuoteModal"),
-  blueprints: () => import("@/components/viewer/BlueprintViewer"),
+  blueprints: () => import("@/components/docs/DocsWorkspace"),
   search: () => import("@/components/layout/SearchCommand"),
   pdf: () => import("@/lib/payrollPdf"),
 };

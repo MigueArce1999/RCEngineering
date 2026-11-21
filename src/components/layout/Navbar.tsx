@@ -38,7 +38,7 @@ import { Tooltip } from "@/components/ui/overlays";
 export const NAV_ITEMS: { key: ModuleKey; label: string; icon: typeof House; hint: string }[] = [
   { key: "home", label: "Inicio", icon: House, hint: "Centro de control del proyecto" },
   { key: "projects", label: "Proyectos", icon: Layers, hint: "Portafolio de proyectos" },
-  { key: "blueprints", label: "Planos", icon: Map, hint: "Visor de planos técnicos" },
+  { key: "blueprints", label: "Planos", icon: Map, hint: "Planos, fotos de obra y acceso de invitados" },
   { key: "viewer3d", label: "3D", icon: Box, hint: "Vista 3D inmersiva" },
   { key: "quotes", label: "Cotizaciones", icon: FileText, hint: "Cotizaciones del proyecto" },
   { key: "materials", label: "Materiales", icon: Boxes, hint: "Abastecimiento de materiales" },
@@ -88,10 +88,6 @@ export function navigateTo(key: ModuleKey) {
         window.scrollTo({ top: 0, behavior: "smooth" });
         break;
       case "blueprints":
-        if (!useProjectStore.getState().blueprints.length) {
-          ui.toast({ title: "Este proyecto aún no tiene planos", description: "La carga de planos (PDF/imagen) llegará en el siguiente paso del producto.", tone: "info" });
-          break;
-        }
         ui.openBlueprints();
         break;
       case "viewer3d":
