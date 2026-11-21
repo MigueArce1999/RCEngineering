@@ -29,8 +29,24 @@ var s={getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]
 Object.defineProperty(s,"length",{get:function(){return Object.keys(d).length}});
 try{Object.defineProperty(window,"localStorage",{configurable:true,get:function(){return s}})}catch(e){}
 document.documentElement.classList.add("rc-compact");
-addEventListener("message",function(e){if(e.data&&e.data.__rcView){document.documentElement.classList.toggle("rc-compact",e.data.__rcView==="compact");setTimeout(function(){dispatchEvent(new Event("resize"))},60)}});
+var raf=window.requestAnimationFrame.bind(window),paused=false,q=[],qid=0;
+window.requestAnimationFrame=function(cb){if(paused){q.push(cb);return -(++qid)}return raf(cb)};
+function pause(v){paused=v;if(!v){var l=q;q=[];l.forEach(function(cb){raf(cb)})}}
+addEventListener("message",function(e){if(!e.data)return;if(e.data.__rcView){document.documentElement.classList.toggle("rc-compact",e.data.__rcView==="compact");setTimeout(function(){dispatchEvent(new Event("resize"))},60)}if(typeof e.data.__rcPause==="boolean")pause(e.data.__rcPause)});
 })();</script><style>${COMPACT_CSS}</style>`;
+}
+
+/** Verdadero mientras un diálogo de Radix bloquea la página (hay una pantalla abierta encima). */
+function useOverlayOpen() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const read = () => setOpen(document.body.hasAttribute("data-scroll-locked"));
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(document.body, { attributes: true, attributeFilter: ["data-scroll-locked"] });
+    return () => mo.disconnect();
+  }, []);
+  return open;
 }
 
 export function ProjectModelFrame({
@@ -85,7 +101,18 @@ export function ProjectModelFrame({
     compactRef.current = compact;
     frame.current?.contentWindow?.postMessage({ __rcView: compact ? "compact" : "full" }, "*");
   }, [compact]);
-  const syncMode = () => frame.current?.contentWindow?.postMessage({ __rcView: compactRef.current ? "compact" : "full" }, "*");
+  // Con una pantalla abierta encima, el modelo se pausa (queda su última imagen) y libera la GPU
+  const covered = useOverlayOpen();
+  const coveredRef = useRef(covered);
+  useEffect(() => {
+    coveredRef.current = covered;
+    frame.current?.contentWindow?.postMessage({ __rcPause: covered }, "*");
+  }, [covered]);
+  const syncMode = () => {
+    const w = frame.current?.contentWindow;
+    w?.postMessage({ __rcView: compactRef.current ? "compact" : "full" }, "*");
+    w?.postMessage({ __rcPause: coveredRef.current }, "*");
+  };
 
   const srcDoc = useMemo(() => {
     if (!html) return undefined;

@@ -42,6 +42,8 @@ async function run(label: string, op: () => Promise<unknown>) {
   }
 }
 
+let inflight: { projectId: string; promise: Promise<void> } | null = null;
+
 export const usePayroll = create<PayrollState>()((set, get) => ({
   projectId: null,
   workers: [],
@@ -49,16 +51,26 @@ export const usePayroll = create<PayrollState>()((set, get) => ({
   state: "idle",
   error: null,
 
-  load: async () => {
+  load: () => {
     const projectId = useProjectStore.getState().projectId;
-    if (!projectId) return;
+    if (!projectId || !can("payroll.manage")) return Promise.resolve();
+    // Una sola petición a la vez por proyecto (precarga + apertura no duplican)
+    if (inflight && inflight.projectId === projectId) return inflight.promise;
+    // Con datos del mismo proyecto se muestran al instante y se actualizan en segundo plano
     if (get().projectId !== projectId) set({ projectId, workers: [], periods: [], state: "loading" });
-    try {
-      const data = await api.loadPayroll(projectId);
-      set({ ...data, state: "ready", error: null });
-    } catch (e) {
-      set({ state: "error", error: (e as Error).message });
-    }
+    const promise = api
+      .loadPayroll(projectId)
+      .then((data) => {
+        if (useProjectStore.getState().projectId === projectId) set({ ...data, state: "ready", error: null });
+      })
+      .catch((e: Error) => {
+        if (get().state !== "ready") set({ state: "error", error: e.message });
+      })
+      .finally(() => {
+        if (inflight?.promise === promise) inflight = null;
+      });
+    inflight = { projectId, promise };
+    return promise;
   },
 
   saveWorker: async (input) => {

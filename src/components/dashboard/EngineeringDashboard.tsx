@@ -1,14 +1,12 @@
 "use client";
 
 import { MotionConfig, motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useEffect } from "react";
+import { loaders, preloadScreens } from "@/lib/preload";
 import { Navbar } from "@/components/layout/Navbar";
 import { HeaderActions, WelcomeHeading } from "@/components/layout/DashboardHeader";
-import { SearchCommand } from "@/components/layout/SearchCommand";
 import { ArchitecturalViewer } from "@/components/viewer/ArchitecturalViewer";
-import { BlueprintViewer } from "@/components/viewer/BlueprintViewer";
-import { QuickQuoteModal } from "@/components/quotes/QuickQuoteModal";
-import { ModulePanels } from "@/components/modules/ModulePanels";
 import { Toaster, TooltipProvider } from "@/components/ui/overlays";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAuth } from "@/stores/authStore";
@@ -23,21 +21,27 @@ import { StageDetailDrawer } from "./StageDetailDrawer";
 import { ProjectInfoCard } from "./ProjectInfoCard";
 import { ActivityTimeline, FinanceOverview, InventoryWidget, MaterialsWidget, QuoteSummary } from "./widgets";
 
-// Entrada estilo Apple: aparece desde un leve desenfoque y escala, con frenado largo
+// Pantallas secundarias: se cargan aparte y se precargan en segundo plano
+const ModulePanels = dynamic(() => loaders.panels().then((m) => m.ModulePanels), { ssr: false });
+const QuickQuoteModal = dynamic(() => loaders.quote().then((m) => m.QuickQuoteModal), { ssr: false });
+const BlueprintViewer = dynamic(() => loaders.blueprints().then((m) => m.BlueprintViewer), { ssr: false });
+const SearchCommand = dynamic(() => loaders.search().then((m) => m.SearchCommand), { ssr: false });
+
+// Entrada estilo Apple: sube y aparece con frenado largo (solo transform/opacity: fluido en la GPU)
 const APPLE = [0.32, 0.72, 0, 1] as const;
-const hidden = { opacity: 0, y: 18, scale: 0.985, filter: "blur(8px)" };
-const shown = { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" };
+const hidden = { opacity: 0, y: 16 };
+const shown = { opacity: 1, y: 0 };
 const rise = (delay: number) => ({
   initial: hidden,
   animate: shown,
-  transition: { duration: 0.9, delay, ease: APPLE },
+  transition: { duration: 0.7, delay, ease: APPLE },
 });
 /** Igual que rise, pero se dispara al entrar en pantalla al hacer scroll */
 const reveal = (delay: number) => ({
   initial: hidden,
   whileInView: shown,
   viewport: { once: true, amount: 0.08 },
-  transition: { duration: 0.9, delay, ease: APPLE },
+  transition: { duration: 0.7, delay, ease: APPLE },
 });
 
 /**
@@ -81,7 +85,11 @@ function Dashboard() {
   const remote = useProjectStore((s) => s.source === "remote");
   const loadState = useProjectStore((s) => s.loadState);
   const hasProjects = useProjectStore((s) => s.projects.length > 0);
-  if (remote && loadState !== "ready" && loadState !== "error") return <Splash />;
+  const loaded = !remote || loadState === "ready" || loadState === "error";
+  useEffect(() => {
+    if (loaded) preloadScreens();
+  }, [loaded]);
+  if (!loaded) return <Splash />;
   const empty = remote && !hasProjects;
 
   return (

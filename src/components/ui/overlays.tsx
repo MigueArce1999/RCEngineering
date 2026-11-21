@@ -4,9 +4,22 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as RTooltip from "@radix-ui/react-tooltip";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/format";
 import { useUI } from "@/stores/uiStore";
+
+/**
+ * Monta el contenido un fotograma después que el panel: el panel aparece y empieza a animar
+ * de inmediato y el contenido pesado (tablas, gráficas) entra justo detrás, sin trabar la animación.
+ */
+export function Deferred({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let id = requestAnimationFrame(() => (id = requestAnimationFrame(() => setReady(true))));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return <>{ready ? children : fallback}</>;
+}
 
 // ── Modal ───────────────────────────────────────────────────────────────
 export function Modal({
@@ -35,10 +48,10 @@ export function Modal({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/30 backdrop-blur-[6px]" />
+        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/40" />
         <Dialog.Content
           className={cn(
-            "anim-modal fixed top-1/2 left-1/2 z-50 flex max-h-[min(92vh,900px)] w-[calc(100vw-24px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[24px] bg-white/95 shadow-[var(--shadow-lg)] ring-1 ring-black/5 backdrop-blur-xl focus:outline-none",
+            "anim-modal fixed top-1/2 left-1/2 z-50 flex max-h-[min(92vh,900px)] w-[calc(100vw-24px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-lg)] ring-1 ring-black/5 focus:outline-none",
             className,
           )}
           style={{ maxWidth: width }}
@@ -53,7 +66,7 @@ export function Modal({
               <X size={18} />
             </Dialog.Close>
           </div>
-          <div className={cn("scroll-thin min-h-0 flex-1 overflow-y-auto px-6 py-5", bodyClassName)}>{children}</div>
+          <div className={cn("anim-content scroll-thin min-h-0 flex-1 overflow-y-auto px-6 py-5", bodyClassName)}>{children}</div>
           {footer && <div className="flex flex-wrap items-center gap-2 border-t border-line/70 bg-surface-2/40 px-6 py-3.5">{footer}</div>}
         </Dialog.Content>
       </Dialog.Portal>
@@ -82,9 +95,9 @@ export function Drawer({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/20 backdrop-blur-[3px]" />
+        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/28" />
         <Dialog.Content
-          className="anim-drawer fixed top-2 right-2 bottom-2 z-50 flex w-[calc(100vw-16px)] flex-col overflow-hidden rounded-[24px] bg-white/96 shadow-[var(--shadow-lg)] ring-1 ring-black/5 backdrop-blur-xl focus:outline-none"
+          className="anim-drawer fixed top-2 right-2 bottom-2 z-50 flex w-[calc(100vw-16px)] flex-col overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-lg)] ring-1 ring-black/5 focus:outline-none"
           style={{ maxWidth: width }}
         >
           <div className="flex items-start gap-3 px-6 pt-5 pb-4">
@@ -97,7 +110,11 @@ export function Drawer({
             </Dialog.Close>
           </div>
           {header}
-          <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">{children}</div>
+          <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
+            <Deferred>
+              <div className="anim-content">{children}</div>
+            </Deferred>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

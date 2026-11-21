@@ -14,6 +14,7 @@ import { cn, formatCOP, formatDate, formatNumber, todayISO, uid } from "@/lib/fo
 import { GlassButton, Skeleton, StatusBadge } from "@/components/ui/primitives";
 import { Select } from "@/components/ui/Select";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { Deferred } from "@/components/ui/overlays";
 
 const APPLE = [0.32, 0.72, 0, 1] as const;
 const inputCls =
@@ -40,7 +41,7 @@ export function PayrollPanel() {
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && openModule("home")}>
       <Dialog.Portal>
-        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/35 backdrop-blur-[6px]" />
+        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/40" />
         <Dialog.Content className="anim-modal fixed top-1/2 left-1/2 z-50 flex h-[min(94dvh,940px)] w-[calc(100vw-16px)] max-w-[1280px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[28px] bg-white shadow-[var(--shadow-lg)]">
           <header className="flex flex-wrap items-center gap-4 border-b border-line/70 px-6 py-4 sm:px-8">
             <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-accent-soft text-brand">
@@ -66,7 +67,11 @@ export function PayrollPanel() {
               <X size={18} />
             </Dialog.Close>
           </header>
-          {open && <Body tab={tab} setTab={setTab} projectName={projectName} />}
+          {open && (
+            <Deferred>
+              <Body tab={tab} setTab={setTab} projectName={projectName} />
+            </Deferred>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -95,10 +100,21 @@ function Body({ tab, setTab, projectName }: { tab: "periods" | "workers"; setTab
     );
   if (state !== "ready")
     return (
-      <div className="space-y-3 p-8">
-        {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-14" />
-        ))}
+      <div className="anim-content flex min-h-0 flex-1 flex-col md:flex-row" aria-busy="true" aria-label="Cargando nómina">
+        <div className="space-y-3 border-b border-line/70 bg-surface-2/40 p-4 md:w-[320px] md:border-r md:border-b-0">
+          <Skeleton className="h-9 rounded-full" />
+          <Skeleton className="h-10" />
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-14" />
+          ))}
+        </div>
+        <div className="flex-1 space-y-3 px-6 py-5 sm:px-8">
+          <Skeleton className="h-7 w-64" />
+          <Skeleton className="h-4 w-80" />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-16" />
+          ))}
+        </div>
       </div>
     );
   return tab === "workers" ? <WorkersView /> : <PeriodsView projectName={projectName} goWorkers={() => setTab("workers")} />;
@@ -121,7 +137,7 @@ function WorkersView() {
   };
 
   return (
-    <div className="scroll-thin flex-1 space-y-6 overflow-y-auto px-6 py-6 sm:px-8">
+    <div className="anim-stagger scroll-thin flex-1 space-y-6 overflow-y-auto px-6 py-6 sm:px-8">
       <form onSubmit={submit} className="grid gap-3 rounded-[18px] bg-surface-2/60 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_170px_220px_190px_auto] lg:items-end">
         <Field label="Nombre completo">
           <Input value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} placeholder="Ej. José Martínez" maxLength={120} autoFocus />
@@ -187,7 +203,7 @@ function PeriodsView({ projectName, goWorkers }: { projectName: string; goWorker
   const current = periods.find((p) => p.id === selected) ?? periods[0];
 
   return (
-    <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+    <div className="anim-stagger scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       <aside className="flex shrink-0 flex-col border-b border-line/70 bg-surface-2/40 md:w-[320px] md:border-r md:border-b-0">
         <div className="space-y-2.5 p-4">
           <p className="text-[13px] font-semibold text-ink">Nueva liquidación</p>
@@ -433,7 +449,7 @@ function PeriodEditor({ period, projectName, onDeleted }: { period: PayrollPerio
           <span className="text-right">Total</span>
           <span />
         </div>
-        <ul className="space-y-2">
+        <ul className="anim-stagger space-y-2">
           {rows.map((r) => {
             const total = entryTotal(r);
             return (

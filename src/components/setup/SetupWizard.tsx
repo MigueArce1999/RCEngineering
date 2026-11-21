@@ -53,7 +53,7 @@ export function SetupWizard() {
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && close()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/35 backdrop-blur-[6px]" />
+        <Dialog.Overlay className="anim-overlay fixed inset-0 z-50 bg-[#0b1f17]/40" />
         <Dialog.Content className="anim-modal fixed top-1/2 left-1/2 z-50 flex h-[min(94dvh,920px)] w-[calc(100vw-16px)] max-w-[1180px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[28px] bg-white shadow-[var(--shadow-lg)] md:flex-row">
           {/* Riel de pasos */}
           <aside className="shrink-0 border-b border-line/70 bg-surface-2/50 p-5 md:w-[300px] md:border-r md:border-b-0 md:p-6">

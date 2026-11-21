@@ -44,9 +44,9 @@ export function SearchCommand() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
-        <Dialog.Overlay className="anim-overlay fixed inset-0 z-[60] bg-[#0b1f17]/25 backdrop-blur-[6px]" />
+        <Dialog.Overlay className="anim-overlay fixed inset-0 z-[60] bg-[#0b1f17]/40" />
         <Dialog.Content
-          className="anim-modal fixed top-[38%] left-1/2 z-[60] w-[calc(100vw-24px)] max-w-[640px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[22px] bg-white/95 shadow-[var(--shadow-lg)] ring-1 ring-black/5 backdrop-blur-xl"
+          className="anim-modal fixed top-[38%] left-1/2 z-[60] w-[calc(100vw-24px)] max-w-[640px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[22px] bg-white shadow-[var(--shadow-lg)] ring-1 ring-black/5"
           aria-describedby={undefined}
         >
           <Dialog.Title className="sr-only">Buscar en RC Engineering OS</Dialog.Title>

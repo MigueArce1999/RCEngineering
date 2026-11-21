@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { asset } from "@/lib/asset";
+import { loaders, prefetchPayroll } from "@/lib/preload";
 import { motion } from "framer-motion";
 import * as Popover from "@radix-ui/react-popover";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
@@ -71,6 +72,13 @@ export function BrandLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/** Al pasar el cursor por un botón se adelanta el código y los datos de esa pantalla. */
+function warmUp(key: ModuleKey) {
+  if (key === "payroll") void prefetchPayroll();
+  if (key === "blueprints") void loaders.blueprints();
+  else if (key !== "home" && key !== "viewer3d") void loaders.panels();
+}
+
 export function navigateTo(key: ModuleKey) {
   const ui = useUI.getState();
   {
@@ -121,6 +129,8 @@ export function Navbar() {
                   <Tooltip content={item.hint}>
                     <button
                       onClick={() => navigate(item.key)}
+                      onPointerEnter={() => warmUp(item.key)}
+                      onFocus={() => warmUp(item.key)}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
                         "relative flex h-[54px] min-w-[58px] flex-col items-center justify-center gap-1 rounded-[14px] px-2.5 2xl:px-3 text-[12px] font-medium transition-colors duration-150",
