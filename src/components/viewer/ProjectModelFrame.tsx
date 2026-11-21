@@ -12,6 +12,12 @@ import { downloadProjectModel } from "@/lib/api";
  * puente que guarda lo que el modelo escribe (p. ej. "rcrc_alturas") en los ajustes del proyecto.
  */
 const cache = new Map<string, string>();
+
+/**
+ * Modo compacto (dashboard): se ocultan los paneles y rótulos del modelo para mostrar solo la casa.
+ * Selectores del visor "Casa P-C" y nombres habituales de paneles; en vista 3D completa se muestran.
+ */
+const COMPACT_CSS = `html.rc-compact .ui,html.rc-compact #info,html.rc-compact .compass,html.rc-compact #mini,html.rc-compact #walkHud,html.rc-compact .lbl,html.rc-compact .dimL,html.rc-compact .dimN,html.rc-compact .dimV,html.rc-compact .dimR,html.rc-compact .dimT,html.rc-compact [data-rc-panel]{display:none!important}`;
 /** Precarga un modelo ya descargado (evita una segunda descarga). */
 export const primeProjectModel = (path: string, html: string) => void cache.set(path, html);
 
@@ -21,19 +27,25 @@ function bridge(settings: Record<string, string>) {
   return `<script>(function(){var d=${data};function send(){try{parent.postMessage({__rcModel:1,data:d},"*")}catch(e){}}
 var s={getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v);send()},removeItem:function(k){delete d[k];send()},clear:function(){d={};send()},key:function(i){return Object.keys(d)[i]||null}};
 Object.defineProperty(s,"length",{get:function(){return Object.keys(d).length}});
-try{Object.defineProperty(window,"localStorage",{configurable:true,get:function(){return s}})}catch(e){}})();</script>`;
+try{Object.defineProperty(window,"localStorage",{configurable:true,get:function(){return s}})}catch(e){}
+document.documentElement.classList.add("rc-compact");
+addEventListener("message",function(e){if(e.data&&e.data.__rcView){document.documentElement.classList.toggle("rc-compact",e.data.__rcView==="compact");setTimeout(function(){dispatchEvent(new Event("resize"))},60)}});
+})();</script><style>${COMPACT_CSS}</style>`;
 }
 
 export function ProjectModelFrame({
   path,
   settings,
   interactive,
+  compact,
   onActivate,
   onSettings,
 }: {
   path: string;
   settings: Record<string, string>;
   interactive: boolean;
+  /** Solo la casa (dashboard) o el visor completo con sus paneles (vista 3D) */
+  compact: boolean;
   onActivate: () => void;
   onSettings: (s: Record<string, string>) => void;
 }) {
@@ -67,6 +79,14 @@ export function ProjectModelFrame({
     return () => window.removeEventListener("message", onMessage);
   }, [onSettings]);
 
+  // Cambia de modo sin recargar el modelo (se conserva la cámara)
+  const compactRef = useRef(compact);
+  useEffect(() => {
+    compactRef.current = compact;
+    frame.current?.contentWindow?.postMessage({ __rcView: compact ? "compact" : "full" }, "*");
+  }, [compact]);
+  const syncMode = () => frame.current?.contentWindow?.postMessage({ __rcView: compactRef.current ? "compact" : "full" }, "*");
+
   const srcDoc = useMemo(() => {
     if (!html) return undefined;
     const inject = bridge(settings);
@@ -81,6 +101,7 @@ export function ProjectModelFrame({
           title="Modelo 3D del proyecto"
           srcDoc={srcDoc}
           sandbox="allow-scripts allow-pointer-lock"
+          onLoad={syncMode}
           className="h-full w-full border-0"
           style={{ pointerEvents: interactive ? "auto" : "none" }}
         />
