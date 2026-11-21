@@ -90,34 +90,67 @@ export async function downloadPayrollPdf({ period, entries, workers, project, pr
   doc.setTextColor(...(paid ? ([19, 112, 74] as [number, number, number]) : ([148, 99, 26] as [number, number, number])));
   doc.text(t(badge), W - M - bw / 2, 30.6, { align: "center" });
 
-  // Ficha del periodo
+  // ── Ficha del periodo ──
+  // Tres columnas con etiqueta arriba y valor abajo; la altura se calcula con el texto real
+  // para que ningún valor se salga del recuadro.
+  const shortDate = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return `${d} ${["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"][m - 1]} ${y}`;
+  };
   const info: [string, string][] = [
     ["Proyecto", [project.code, project.name].filter(Boolean).join(" · ") || "-"],
     ["Cliente", project.clientName || "-"],
-    ["Tipo", KIND_LABEL[period.kind]],
-    ["Periodo", `${formatDate(period.startDate)} al ${formatDate(period.endDate)} (${periodDays(period)} días)`],
-    ["Trabajadores", String(entries.length)],
-    ["Generado", new Date().toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })],
+    ["Tipo de pago", KIND_LABEL[period.kind]],
+    ["Periodo", `${shortDate(period.startDate)} – ${shortDate(period.endDate)} · ${periodDays(period)} días`],
+    ["Trabajadores", `${entries.length} ${entries.length === 1 ? "persona" : "personas"}`],
+    ["Generado", new Date().toLocaleString("es-CO", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })],
   ];
-  doc.setFillColor(...SOFT);
-  doc.roundedRect(M, 38, W - 2 * M, 17, 2.5, 2.5, "F");
+  const boxTop = 38;
+  const padX = 7;
+  const padY = 6.5;
   const colW = (W - 2 * M) / 3;
-  info.forEach(([k, v], i) => {
-    const cx = M + 5 + (i % 3) * colW;
-    const cy = 44 + Math.floor(i / 3) * 7;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
+  const valueW = colW - padX * 2;
+  const LABEL_H = 4.2; // etiqueta + separación
+  const LINE_H = 4.6; // interlineado del valor (10 pt)
+  const ROW_GAP = 5.5;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  const lines = info.map(([, v]) => doc.splitTextToSize(t(v), valueW) as string[]);
+  const rowH = [0, 1].map((r) => LABEL_H + Math.max(...lines.slice(r * 3, r * 3 + 3).map((l) => l.length)) * LINE_H);
+  const boxH = padY * 2 + rowH[0] + ROW_GAP + rowH[1];
+
+  doc.setFillColor(...SOFT);
+  doc.roundedRect(M, boxTop, W - 2 * M, boxH, 3, 3, "F");
+  // Divisores verticales sutiles entre columnas
+  doc.setDrawColor(...LINE);
+  doc.setLineWidth(0.3);
+  [1, 2].forEach((c) => doc.line(M + c * colW, boxTop + padY, M + c * colW, boxTop + boxH - padY));
+  // Divisor horizontal entre filas
+  const midY = boxTop + padY + rowH[0] + ROW_GAP / 2;
+  doc.line(M + padX, midY, W - M - padX, midY);
+
+  info.forEach(([k], i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cx = M + col * colW + padX;
+    const top = boxTop + padY + (row === 0 ? 0 : rowH[0] + ROW_GAP);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.8);
     doc.setTextColor(...MUTED);
-    doc.text(t(k.toUpperCase()), cx, cy);
-    doc.setFontSize(9);
+    doc.setCharSpace(0.25);
+    doc.text(t(k.toUpperCase()), cx, top + 2.4);
+    doc.setCharSpace(0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
     doc.setTextColor(...INK);
-    doc.text(t(v), cx + 24, cy, { maxWidth: colW - 30 });
+    doc.text(lines[i], cx, top + LABEL_H + 3.4, { lineHeightFactor: 1.3 });
   });
+  const tableTop = boxTop + boxH + 8;
 
   // ── Tabla de liquidación ──
   const doc_ = (id: string | null) => workers.find((w) => w.id === id)?.document ?? "";
   autoTable(doc, {
-    startY: 60,
+    startY: tableTop,
     margin: { left: M, right: M },
     head: [["#", "Trabajador", "Cédula", "Cargo", "Días", "Valor día", "Subtotal", "Extras", "Descuentos", "Total a pagar"]],
     body: entries.map((e, i) => [
@@ -132,12 +165,22 @@ export async function downloadPayrollPdf({ period, entries, workers, project, pr
       e.deductions ? `- ${money(e.deductions)}` : "-",
       money(entryTotal(e)),
     ]),
-    foot: [["", "Totales", "", "", t(formatNumber(sum.days)), "", money(sum.subtotal), money(sum.extras), `- ${money(sum.deductions)}`, money(sum.total)]],
+    foot: [
+      ["", "Totales", "", "", t(formatNumber(sum.days)), "", money(sum.subtotal), sum.extras ? money(sum.extras) : "-", sum.deductions ? `- ${money(sum.deductions)}` : "-", money(sum.total)].map((content, i) => ({
+        content,
+        // El pie no hereda columnStyles: se alinea a la derecha igual que las columnas numéricas
+        styles: { halign: i >= 4 ? ("right" as const) : ("left" as const) },
+      })),
+    ],
     theme: "plain",
     styles: { font: "helvetica", fontSize: 8.6, textColor: INK, cellPadding: { top: 2.4, bottom: 2.4, left: 2.2, right: 2.2 }, lineColor: LINE, lineWidth: { bottom: 0.2 } },
     headStyles: { fillColor: BRAND, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8, lineWidth: 0 },
     footStyles: { fillColor: SOFT, textColor: INK, fontStyle: "bold", lineWidth: 0 },
     alternateRowStyles: { fillColor: [250, 251, 250] },
+    // Encabezados de columnas numéricas alineados a la derecha, como sus valores
+    didParseCell: (d) => {
+      if (d.section === "head" && d.column.index >= 4) d.cell.styles.halign = "right";
+    },
     columnStyles: {
       0: { cellWidth: 8, textColor: MUTED },
       1: { cellWidth: 52, fontStyle: "bold" },
@@ -166,6 +209,9 @@ export async function downloadPayrollPdf({ period, entries, workers, project, pr
     theme: "plain",
     styles: { fontSize: 8.4, textColor: INK, cellPadding: 2, lineColor: LINE, lineWidth: { bottom: 0.2 } },
     headStyles: { textColor: MUTED, fontStyle: "bold", fontSize: 7.8 },
+    didParseCell: (d) => {
+      if (d.section === "head" && d.column.index >= 1) d.cell.styles.halign = "right";
+    },
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right", fontStyle: "bold" } },
   });
 
