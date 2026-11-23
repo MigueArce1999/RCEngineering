@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, CheckCircle2, Clock, Footprints, MessageSquarePlus, MousePointerClick, Send, Tag, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Box, Car, Check, CheckCircle2, Clock, DoorOpen, Droplets, FlipHorizontal2, Footprints, House, MessageSquarePlus, MousePointerClick, Plane, Send, SlidersHorizontal, Sofa, Sun, Tag, Tent, Waves, X, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { cn, formatDate } from "@/lib/format";
 import type { GuestComment, GuestPin } from "@/lib/guest";
 import { ProjectModelFrame, type ModelCmd, type ModelPick } from "@/components/viewer/ProjectModelFrame";
@@ -10,18 +10,18 @@ import { useGuestComment } from "./GuestComments";
 
 const EXPO = [0.16, 1, 0.3, 1] as const;
 /** Pocas vistas, las que un cliente realmente necesita */
-const VIEWS: { k: string; l: string }[] = [
-  { k: "iso", l: "General" },
-  { k: "rFrente", l: "Frente" },
-  { k: "rPost", l: "Atrás" },
-  { k: "rAereaF", l: "Aérea" },
-  { k: "rAcceso", l: "Acceso" },
-  { k: "sala", l: "Sala" },
-  { k: "terraza", l: "Terraza" },
-  { k: "rPisc", l: "Piscina" },
-  { k: "rParq", l: "Parqueadero" },
-  { k: "rBohio", l: "Bohío" },
-  { k: "rLago", l: "Lago" },
+const VIEWS: { k: string; l: string; icon: LucideIcon }[] = [
+  { k: "iso", l: "General", icon: Box },
+  { k: "rFrente", l: "Frente", icon: House },
+  { k: "rPost", l: "Atrás", icon: FlipHorizontal2 },
+  { k: "rAereaF", l: "Aérea", icon: Plane },
+  { k: "rAcceso", l: "Acceso", icon: DoorOpen },
+  { k: "sala", l: "Sala", icon: Sofa },
+  { k: "terraza", l: "Terraza", icon: Sun },
+  { k: "rPisc", l: "Piscina", icon: Waves },
+  { k: "rParq", l: "Parqueadero", icon: Car },
+  { k: "rBohio", l: "Bohío", icon: Tent },
+  { k: "rLago", l: "Lago", icon: Droplets },
 ];
 const STATUS = {
   new: { label: "Recibido", icon: Check, cls: "bg-surface-2 text-ink-2" },
@@ -76,7 +76,7 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
   const activeComment = pinned.find((c) => c.id === active) ?? null;
   const send = (type: ModelCmd["type"], arg?: unknown) => setCmd((c) => ({ n: (c?.n ?? 0) + 1, type, arg }));
   const area = useVisibleArea();
-  const bar = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState(false);
   const [hint, setHint] = useState(true);
 
   // La página de atrás queda congelada: el iPhone no la desplaza ni la amplía al abrir el teclado
@@ -98,14 +98,9 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
     const t = window.setTimeout(() => setHint(false), 5200);
     return () => window.clearTimeout(t);
   }, []);
-  // La vista activa siempre queda centrada en la barra
-  useEffect(() => {
-    const el = bar.current?.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (el && bar.current) bar.current.scrollTo({ left: el.offsetLeft - bar.current.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
-  }, [view]);
-
   const goView = (k: string) => {
     setView(k);
+    setMenu(false);
     setPick(null);
     send("view", k);
   };
@@ -165,9 +160,6 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
         <button onClick={onClose} className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-white/95 px-4 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]">
           <X size={16} /> Cerrar
         </button>
-        <button onClick={() => setLabels((v) => !v)} aria-pressed={labels} className={cn("pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full px-4 text-[13px] font-medium shadow-[var(--shadow-md)] transition active:scale-[0.97]", labels ? "bg-ink text-white" : "bg-white/95 text-ink", walking && "invisible")}>
-          <Tag size={15} /> Nombres
-        </button>
       </div>
 
       {/* Aviso del modo comentar */}
@@ -179,43 +171,77 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
         )}
       </AnimatePresence>
 
-      {/* Barra inferior: vistas + recorrido + comentar. Durante el recorrido la oculta: el recorrido trae su propia tarjeta */}
+      {/* Abajo: dos acciones principales y un solo botón que abre todas las opciones (como en MallPlay) */}
       {!walking && (
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
-          <div className="pointer-events-auto relative w-full max-w-[640px] rounded-full bg-[#0f2a20]/92 shadow-[0_10px_30px_rgb(0_0_0/0.35)] backdrop-blur-md">
-            <div ref={bar} className="no-scrollbar flex snap-x snap-mandatory gap-1 overflow-x-auto scroll-smooth rounded-full p-1.5 [mask-image:linear-gradient(90deg,transparent,#000_20px,#000_calc(100%-20px),transparent)]" role="tablist" aria-label="Vistas">
-            {VIEWS.map((v) => (
-              <button key={v.k} role="tab" aria-selected={view === v.k} onClick={() => goView(v.k)} className={cn("h-11 shrink-0 snap-center rounded-full px-4 text-[14px] font-medium transition active:scale-[0.96]", view === v.k ? "bg-white text-[#0f2a20]" : "text-white/75 hover:text-white")}>
-                {v.l}
+        <>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
+            <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/95 p-1.5 shadow-[0_12px_34px_rgb(0_0_0/0.3)] backdrop-blur-md">
+              {enabled && (
+                <button onClick={() => (setCommentMode((v) => !v), setPick(null), setActive(null), setMenu(false))} aria-pressed={commentMode} className={cn("inline-flex h-12 items-center gap-2 rounded-full px-5 text-[15px] font-semibold transition active:scale-[0.97]", commentMode ? "bg-[#1f5fd1] text-white" : "bg-[#0f2a20] text-white")}>
+                  <MessageSquarePlus size={18} /> {commentMode ? "Cancelar" : "Comentar"}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setCommentMode(false);
+                  setPick(null);
+                  setActive(null);
+                  setMenu(false);
+                  send("walk");
+                }}
+                className="inline-flex h-12 items-center gap-2 rounded-full px-5 text-[15px] font-semibold text-ink transition hover:bg-surface-2 active:scale-[0.97]"
+              >
+                <Footprints size={18} /> Recorrido
               </button>
-            ))}
             </div>
           </div>
-          <div className="pointer-events-auto flex gap-2">
-            <button
-              onClick={() => {
-                setCommentMode(false);
-                setPick(null);
-                setActive(null);
-                send("walk");
-              }}
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-white/95 px-5 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]"
-            >
-              <Footprints size={17} /> Recorrido
-            </button>
-            {enabled && (
-              <button onClick={() => (setCommentMode((v) => !v), setPick(null), setActive(null))} aria-pressed={commentMode} className={cn("inline-flex h-12 items-center gap-2 rounded-full px-5 text-[14px] font-semibold shadow-[var(--shadow-md)] transition active:scale-[0.97]", commentMode ? "bg-[#1f5fd1] text-white" : "bg-[#d9541e] text-white")}>
-                <MessageSquarePlus size={17} /> {commentMode ? "Cancelar" : "Comentar"}
-              </button>
+
+          <button onClick={() => setMenu((v) => !v)} aria-expanded={menu} aria-label="Vistas y opciones" className={cn("pointer-events-auto absolute right-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-20 grid h-14 w-14 place-items-center rounded-full shadow-[0_12px_30px_rgb(0_0_0/0.3)] transition active:scale-[0.94] sm:right-4 sm:bottom-24", menu ? "bg-[#0f2a20] text-white" : "bg-white/95 text-ink")}>
+            <motion.span animate={{ rotate: menu ? 90 : 0 }} transition={{ duration: 0.35, ease: EXPO }}>
+              {menu ? <X size={22} /> : <SlidersHorizontal size={22} />}
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {menu && (
+              <>
+                <motion.div className="absolute inset-0 z-10" onPointerDown={() => setMenu(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.94, y: 8 }}
+                  transition={{ duration: 0.4, ease: EXPO }}
+                  style={{ transformOrigin: "bottom right", maxHeight: "calc(100% - 9rem)" }}
+                  className="absolute right-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+9.75rem)] z-20 w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto rounded-[28px] bg-[#fbf9f4] p-4 shadow-[0_24px_70px_rgb(0_0_0/0.4)] sm:right-4 sm:bottom-[11.5rem]"
+                >
+                  <p className="px-1 text-[11px] font-bold tracking-[0.16em] text-[#6f6a60] uppercase">Zonas de la casa</p>
+                  <div className="mt-2.5 grid grid-cols-3 gap-2">
+                    {VIEWS.map((v) => (
+                      <button key={v.k} onClick={() => goView(v.k)} aria-pressed={view === v.k} className={cn("flex min-h-[78px] flex-col items-center justify-center gap-1.5 rounded-[18px] px-1.5 py-3 text-center text-[12.5px] leading-tight font-medium transition active:scale-[0.96]", view === v.k ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink hover:bg-[#e6e2d8]")}>
+                        <v.icon size={22} strokeWidth={1.6} />
+                        {v.l}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-4 px-1 text-[11px] font-bold tracking-[0.16em] text-[#6f6a60] uppercase">Mostrar</p>
+                  <div className="mt-2.5">
+                    <button onClick={() => setLabels((v) => !v)} aria-pressed={labels} className={cn("flex min-h-[56px] w-full items-center gap-3 rounded-[18px] px-4 text-left text-[14px] font-medium transition active:scale-[0.98]", labels ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink")}>
+                      <Tag size={20} strokeWidth={1.6} />
+                      <span className="flex-1">Nombres de los espacios</span>
+                      <span className={cn("grid h-5 w-5 place-items-center rounded-full", labels ? "bg-[#2ea06e]" : "ring-1 ring-black/20")}>{labels && <Check size={12} strokeWidth={3} />}</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </>
             )}
-          </div>
-        </div>
+          </AnimatePresence>
+        </>
       )}
 
       {/* Pista de gestos al abrir */}
       <AnimatePresence>
         {hint && !walking && (
-          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EXPO }} className="pointer-events-none absolute bottom-[max(8.5rem,calc(env(safe-area-inset-bottom)+8.5rem))] left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-4 py-2 text-[12px] font-medium whitespace-nowrap text-white backdrop-blur-md">
+          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EXPO }} className="pointer-events-none absolute bottom-[max(6rem,calc(env(safe-area-inset-bottom)+6rem))] left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-4 py-2 text-[12px] font-medium whitespace-nowrap text-white backdrop-blur-md">
             Arrastra para girar · Pellizca para acercar
           </motion.p>
         )}
