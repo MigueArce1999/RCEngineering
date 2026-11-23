@@ -36,7 +36,13 @@ export interface ModelPick {
   sx: number;
   sy: number;
 }
-export type ModelCmd = { n: number; type: "view" | "fly" | "walk"; arg?: unknown };
+export type ModelCmd = { n: number; type: "view" | "fly" | "walk" | "roof" | "run" | "next" | "prev" | "exitwalk" | "mini" | "batch"; arg?: unknown };
+export interface ModelStop {
+  n: number;
+  total: number;
+  title: string;
+  text: string;
+}
 
 /** Precarga un modelo ya descargado (evita una segunda descarga). */
 export const primeProjectModel = (path: string, html: string) => void cache.set(path, html);
@@ -87,6 +93,7 @@ export function ProjectModelFrame({
   onPick,
   onPinClick,
   onWalk,
+  onStop,
 }: {
   path: string;
   settings: Record<string, string>;
@@ -113,6 +120,8 @@ export function ProjectModelFrame({
   onPinClick?: (id: string) => void;
   /** El modelo entró o salió del recorrido en primera persona */
   onWalk?: (on: boolean) => void;
+  /** Parada actual del recorrido guiado */
+  onStop?: (s: ModelStop) => void;
 }) {
   const [html, setHtml] = useState<string | null>(cache.get(path) ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -168,6 +177,7 @@ export function ProjectModelFrame({
   const onPickRef = useRef(onPick);
   const onPinRef = useRef(onPinClick);
   const onWalkRef = useRef(onWalk);
+  const onStopRef = useRef(onStop);
   const pushState = useRef<() => void>(() => {});
   const cmdRef = useRef<ModelCmd | null>(null);
   // Mensajes del puente de almacenamiento (solo del iframe propio)
@@ -176,6 +186,7 @@ export function ProjectModelFrame({
       if (e.source !== frame.current?.contentWindow || !e.data) return;
       if (e.data.__rcPick) return onPickRef.current?.(e.data.__rcPick as ModelPick);
       if (e.data.__rcPinClick) return onPinRef.current?.(String(e.data.__rcPinClick));
+      if (e.data.__rcStop) return onStopRef.current?.(e.data.__rcStop as ModelStop);
       if (typeof e.data.__rcWalk === "boolean") return onWalkRef.current?.(e.data.__rcWalk);
       if (e.data.__rcReady) {
         pushState.current();
@@ -197,6 +208,7 @@ export function ProjectModelFrame({
     onPickRef.current = onPick;
     onPinRef.current = onPinClick;
     onWalkRef.current = onWalk;
+    onStopRef.current = onStop;
     pushState.current = () => {
       const w = frame.current?.contentWindow;
       w?.postMessage({ __rcG: { guest, labels: showLabels, comment: commentMode, pins: pins ?? [], keepPreview: commentMode } }, "*");

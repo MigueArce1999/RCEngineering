@@ -1,11 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Box, Car, Check, CheckCircle2, Clock, DoorOpen, Droplets, FlipHorizontal2, Footprints, House, MessageSquarePlus, MousePointerClick, Plane, Send, SlidersHorizontal, Sofa, Sun, Tag, Tent, Waves, X, type LucideIcon } from "lucide-react";
+import { Box, Car, Check, ChevronLeft, ChevronRight, Layers, Map as MapIcon, Zap, CheckCircle2, Clock, DoorOpen, Droplets, FlipHorizontal2, Footprints, House, MessageSquarePlus, MousePointerClick, Plane, Send, SlidersHorizontal, Sofa, Sun, Tag, Tent, Waves, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { cn, formatDate } from "@/lib/format";
 import type { GuestComment, GuestPin } from "@/lib/guest";
-import { ProjectModelFrame, type ModelCmd, type ModelPick } from "@/components/viewer/ProjectModelFrame";
+import { ProjectModelFrame, type ModelCmd, type ModelPick, type ModelStop } from "@/components/viewer/ProjectModelFrame";
 import { useGuestComment } from "./GuestComments";
 
 const EXPO = [0.16, 1, 0.3, 1] as const;
@@ -15,6 +15,7 @@ const VIEWS: { k: string; l: string; icon: LucideIcon }[] = [
   { k: "rFrente", l: "Frente", icon: House },
   { k: "rPost", l: "Atrás", icon: FlipHorizontal2 },
   { k: "rAereaF", l: "Aérea", icon: Plane },
+  { k: "sinTecho", l: "Sin techo", icon: Layers },
   { k: "rAcceso", l: "Acceso", icon: DoorOpen },
   { k: "sala", l: "Sala", icon: Sofa },
   { k: "terraza", l: "Terraza", icon: Sun },
@@ -23,6 +24,9 @@ const VIEWS: { k: string; l: string; icon: LucideIcon }[] = [
   { k: "rBohio", l: "Bohío", icon: Tent },
   { k: "rLago", l: "Lago", icon: Droplets },
 ];
+/** Vista alta y oblicua para ver todos los espacios con el techo quitado */
+const NO_ROOF_VIEW = { cam: [9, 66, 43], tgt: [-1, 0, 2], fov: 45 };
+
 const STATUS = {
   new: { label: "Recibido", icon: Check, cls: "bg-surface-2 text-ink-2" },
   in_progress: { label: "En curso", icon: Clock, cls: "bg-warning-soft text-[#7c5314]" },
@@ -77,6 +81,10 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
   const send = (type: ModelCmd["type"], arg?: unknown) => setCmd((c) => ({ n: (c?.n ?? 0) + 1, type, arg }));
   const area = useVisibleArea();
   const [menu, setMenu] = useState(false);
+  const [roofOn, setRoofOn] = useState(true);
+  const [stop, setStop] = useState<ModelStop | null>(null);
+  const [readOpen, setReadOpen] = useState(false);
+  const [running, setRunning] = useState(false);
   const [hint, setHint] = useState(true);
 
   // La página de atrás queda congelada: el iPhone no la desplaza ni la amplía al abrir el teclado
@@ -102,7 +110,21 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
     setView(k);
     setMenu(false);
     setPick(null);
-    send("view", k);
+    if (k === "sinTecho") {
+      setRoofOn(false);
+      send("batch", [{ type: "roof", arg: false }, { type: "fly", arg: NO_ROOF_VIEW }]);
+      return;
+    }
+    // Las vistas del modelo vuelven a poner el techo: se reaplica lo que el cliente eligió
+    send("batch", [{ type: "view", arg: k }, { type: "roof", arg: roofOn }]);
+  };
+  const toggleRoof = () => {
+    setRoofOn((v) => !v);
+    send("roof", !roofOn);
+  };
+  const setRun = (on: boolean) => {
+    setRunning(on);
+    send("run", on);
   };
   const closePopup = () => {
     setPick(null);
@@ -148,19 +170,86 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
           setActive(null);
           setPick(p);
         }}
-        onWalk={setWalking}
+        onWalk={(on) => {
+          setWalking(on);
+          if (!on) {
+            setRunning(false);
+            setReadOpen(false);
+          }
+        }}
+        onStop={setStop}
         onPinClick={(id) => {
           setPick(null);
           setActive((a) => (a === id ? null : id));
         }}
       />
 
-      {/* Barra superior */}
+      {/* Barra superior: en el recorrido, "Salir" y el plano; si no, "Cerrar" */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4">
-        <button onClick={onClose} className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-white/95 px-4 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]">
-          <X size={16} /> Cerrar
-        </button>
+        {walking ? (
+          <button onClick={() => send("exitwalk")} className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-white/95 px-4 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]">
+            <X size={16} /> Salir del recorrido
+          </button>
+        ) : (
+          <button onClick={onClose} className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-white/95 px-4 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]">
+            <X size={16} /> Cerrar
+          </button>
+        )}
+        {walking && (
+          <button onClick={() => send("mini")} aria-label="Plano de la casa" className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-white/95 text-ink shadow-[var(--shadow-md)] transition active:scale-[0.94]">
+            <MapIcon size={19} />
+          </button>
+        )}
       </div>
+
+      {/* Recorrido: parada actual, avanzar o retroceder, y correr (sin tarjetas grandes) */}
+      <AnimatePresence>
+        {walking && (
+          <>
+            <motion.div key="stop" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.4, ease: EXPO }} className="pointer-events-none absolute inset-x-0 top-[max(4.25rem,calc(env(safe-area-inset-top)+3.75rem))] flex flex-col items-center gap-2 px-3 sm:top-20">
+              <div className="pointer-events-auto flex max-w-full items-center gap-0.5 rounded-full bg-white/95 p-1 shadow-[0_10px_30px_rgb(0_0_0/0.3)] backdrop-blur-md">
+                <button onClick={() => send("prev")} aria-label="Parada anterior" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink transition hover:bg-surface-2 active:scale-[0.92]">
+                  <ChevronLeft size={20} />
+                </button>
+                <button onClick={() => setReadOpen((v) => !v)} aria-expanded={readOpen} className="min-w-0 px-2 text-left">
+                  <span className="block max-w-[44vw] truncate text-[14px] font-semibold text-ink sm:max-w-[320px]">{stop ? `${stop.n + 1}. ${stop.title}` : "Recorrido"}</span>
+                  <span className="block text-[11px] text-ink-3">{stop ? `Parada ${stop.n + 1} de ${stop.total}` : ""} · {readOpen ? "ocultar" : "leer"}</span>
+                </button>
+                <button onClick={() => send("next")} aria-label="Parada siguiente" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#d9541e] text-white transition active:scale-[0.92]">
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+              <AnimatePresence>
+                {readOpen && stop && (
+                  <motion.p initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35, ease: EXPO }} className="pointer-events-auto max-h-[34dvh] w-full max-w-sm overflow-y-auto rounded-[18px] bg-white/95 p-4 text-[13px] leading-relaxed text-ink-2 shadow-[0_10px_30px_rgb(0_0_0/0.3)]">
+                    {stop.text}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            <motion.button
+              key="run"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: running ? 1.08 : 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3, ease: EXPO }}
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setRun(true);
+              }}
+              onPointerUp={() => setRun(false)}
+              onPointerCancel={() => setRun(false)}
+              onContextMenu={(e) => e.preventDefault()}
+              aria-label="Mantén presionado para correr"
+              className={cn("pointer-events-auto absolute right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+28px)] z-10 flex h-[72px] w-[72px] touch-none flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-semibold shadow-[0_12px_30px_rgb(0_0_0/0.35)] select-none", running ? "bg-[#d9541e] text-white" : "bg-[#0f2a20]/80 text-white backdrop-blur-md")}
+            >
+              <Zap size={22} fill={running ? "currentColor" : "none"} />
+              Correr
+            </motion.button>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Aviso del modo comentar */}
       <AnimatePresence>
@@ -225,6 +314,11 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
                   </div>
                   <p className="mt-4 px-1 text-[11px] font-bold tracking-[0.16em] text-[#6f6a60] uppercase">Mostrar</p>
                   <div className="mt-2.5">
+                    <button onClick={toggleRoof} aria-pressed={!roofOn} className={cn("mb-2 flex min-h-[56px] w-full items-center gap-3 rounded-[18px] px-4 text-left text-[14px] font-medium transition active:scale-[0.98]", !roofOn ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink")}>
+                      <Layers size={20} strokeWidth={1.6} />
+                      <span className="flex-1">Quitar el techo</span>
+                      <span className={cn("grid h-5 w-5 place-items-center rounded-full", !roofOn ? "bg-[#2ea06e]" : "ring-1 ring-black/20")}>{!roofOn && <Check size={12} strokeWidth={3} />}</span>
+                    </button>
                     <button onClick={() => setLabels((v) => !v)} aria-pressed={labels} className={cn("flex min-h-[56px] w-full items-center gap-3 rounded-[18px] px-4 text-left text-[14px] font-medium transition active:scale-[0.98]", labels ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink")}>
                       <Tag size={20} strokeWidth={1.6} />
                       <span className="flex-1">Nombres de los espacios</span>

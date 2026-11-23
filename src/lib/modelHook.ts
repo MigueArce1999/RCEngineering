@@ -61,10 +61,20 @@ const HOOK = `
    if('comment' in g){st.comment=!!g.comment;window.__rcBlock=st.comment;el.style.cursor=st.comment?'crosshair':'';if(!st.comment&&st.preview){st.preview=null;sync();}}
    if('pins' in g){st.pins=g.pins||[];if(!g.keepPreview)st.preview=null;sync();}
    if(g.clearPreview){st.preview=null;sync();}}
-  if(d.__rcCmd){const c=d.__rcCmd;
-   if(c.type==='view'){const b=document.querySelector('[data-v="'+c.arg+'"]');if(b)b.click();}
-   else if(c.type==='fly')flyTo(c.arg.cam,c.arg.tgt,c.arg.fov);
-   else if(c.type==='walk'){const b=document.getElementById('bWalk');if(b)b.click();}}});
+  if(d.__rcCmd)runCmd(d.__rcCmd);});
+ function runCmd(c){
+  if(c.type==='batch'){(c.arg||[]).forEach(runCmd);return;}
+  if(c.type==='view'){const b=document.querySelector('[data-v="'+c.arg+'"]');if(b)b.click();}
+  else if(c.type==='fly')flyTo(c.arg.cam,c.arg.tgt,c.arg.fov);
+  else if(c.type==='walk'){const b=document.getElementById('bWalk');if(b)b.click();}
+  else if(c.type==='roof'){const t=document.getElementById('tRoof');if(t){t.checked=!!c.arg;t.dispatchEvent(new Event('change',{bubbles:true}));}}
+  else if(c.type==='run'){try{if(c.arg)W.keys.add('shift');else W.keys.delete('shift');}catch(e){}}
+  else if(c.type==='next'){const b=document.getElementById('wNext');if(b)b.click();}
+  else if(c.type==='prev'){const b=document.getElementById('wPrev');if(b)b.click();}
+  else if(c.type==='exitwalk'){const b=document.getElementById('wExit');if(b)b.click();try{W.keys.delete('shift');}catch(e){}}
+  else if(c.type==='mini')document.body.classList.toggle('mini-on');}
+ function stopInfo(){try{const s=STOPS[W.stop];if(s)parent.postMessage({__rcStop:{n:W.stop,total:STOPS.length,title:s[0],text:s[1]}},'*');}catch(e){}}
+ const wt=document.getElementById('wTitle');if(wt)new MutationObserver(stopInfo).observe(wt,{childList:true,characterData:true,subtree:true});
  addEventListener('contextmenu',e=>{if(root.classList.contains('rc-guest'))e.preventDefault();});
  const hud=document.getElementById('walkHud');
  if(hud){let w=null;const rep=()=>{const on=hud.style.display!=='none'&&getComputedStyle(hud).display!=='none';if(on!==w){w=on;parent.postMessage({__rcWalk:on},'*');}};new MutationObserver(rep).observe(hud,{attributes:true,attributeFilter:['style']});rep();}
@@ -79,6 +89,9 @@ export const GUEST_CSS =
   // Tocar o mantener presionado nunca selecciona texto ni abre "Copiar / Buscar con Google"
   "html.rc-guest,html.rc-guest *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important;-webkit-tap-highlight-color:transparent!important}" +
   "html.rc-guest #walkHud button,html.rc-guest #pad .pb{touch-action:manipulation}" +
+  // El recorrido usa controles propios de la página: se oculta la tarjeta del modelo y las flechas pasan a la izquierda
+  "html.rc-guest .wcard,html.rc-guest .whelp{display:none!important}" +
+  "html.rc-guest #pad{left:14px!important;right:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 20px)!important}" +
   // Flechas del recorrido: botones redondos de vidrio, sin recuadro
   "@media (max-width:760px){html.rc-guest #pad{gap:8px;grid-template-columns:repeat(3,52px)!important;grid-template-rows:repeat(2,52px)!important}" +
   "html.rc-guest #pad .pb{border-radius:50%!important;background:rgba(15,42,32,.58)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.25)}" +
