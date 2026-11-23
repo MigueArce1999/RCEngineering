@@ -25,6 +25,9 @@ const CAT_ICON: Record<CostCategory, ReactNode> = { materials: <Package size={15
 const monthFmt = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" });
 const digits = (v: string) => Number(v.replace(/\D/g, "").slice(0, 14)) || 0;
 const money = (n: number) => (n ? new Intl.NumberFormat("es-CO").format(n) : "");
+/** Consumo acumulado antes de empezar a registrar en la app (proyectos que ya venían en marcha) */
+const OPENING = "Consumo previo (antes de usar la app)";
+const isOpening = (e: Expense) => e.concept === OPENING;
 /** Los gastos de nómina se crean y anulan desde el módulo de Nómina */
 const isPayroll = (e: Expense) => e.category === "labor" && e.concept.startsWith("Nómina ·");
 
@@ -211,13 +214,65 @@ function BudgetHero({ budget, spent, available, expenses, canEdit }: { budget: n
           )}
         </Stat>
         <Stat label="Consumido">
-          <AnimatedNumber value={spent} format={formatCOPMillions} />
+          <OpeningEditor spent={spent} expenses={expenses} canEdit={canEdit} />
         </Stat>
         <Stat label="Disponible">
           <AnimatedNumber value={available} format={formatCOPMillions} />
         </Stat>
       </div>
     </section>
+  );
+}
+
+/** Lápiz de "Consumido": fija el consumo acumulado previo (lo gastado antes de usar la app). */
+function OpeningEditor({ spent, expenses, canEdit }: { spent: number; expenses: Expense[]; canEdit: boolean }) {
+  const add = useProjectStore((s) => s.addExpense);
+  const update = useProjectStore((s) => s.updateExpense);
+  const remove = useProjectStore((s) => s.removeExpense);
+  const startDate = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId)?.startDate);
+  const existing = expenses.find(isOpening);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(existing?.amount ?? 0);
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    setBusy(true);
+    let ok = true;
+    if (draft > 0 && existing) ok = await update({ ...existing, amount: draft });
+    else if (draft > 0) ok = await add({ date: startDate && startDate <= todayISO() ? startDate : todayISO(), concept: OPENING, category: "other", amount: draft });
+    else if (existing) ok = await remove(existing.id);
+    setBusy(false);
+    if (ok) setEditing(false);
+  };
+
+  if (editing)
+    return (
+      <div className="space-y-2">
+        <p className="text-[11px] leading-snug font-normal whitespace-normal text-white/70">Lo gastado antes de registrar aquí</p>
+        <form
+          className="flex items-center gap-1.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+        >
+          <input autoFocus inputMode="numeric" value={money(draft)} onChange={(e) => setDraft(digits(e.target.value))} onKeyDown={(e) => e.key === "Escape" && setEditing(false)} placeholder="0" className="tabular h-8 w-full min-w-0 rounded-[8px] bg-white px-2 text-[14px] text-ink outline-none" aria-label="Consumo previo acumulado" />
+          <button type="submit" disabled={busy} className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-[#2ea06e] disabled:opacity-60" aria-label="Guardar consumo previo">
+            <Check size={15} />
+          </button>
+        </form>
+      </div>
+    );
+
+  return (
+    <span className="flex items-center gap-2">
+      <AnimatedNumber value={spent} format={formatCOPMillions} />
+      {canEdit && (
+        <button onClick={() => (setDraft(existing?.amount ?? 0), setEditing(true))} className="grid h-6 w-6 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white" aria-label="Editar consumo previo acumulado" title="Ingresar lo ya consumido antes de usar la app">
+          <Pencil size={12} />
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -314,7 +369,7 @@ function AddExpense({ onAdded, available }: { onAdded: (id: string) => void; ava
   return (
     <form onSubmit={submit} className="rounded-[24px] bg-white p-5 ring-1 ring-line/70 sm:p-6">
       <h3 className="text-[15px] font-semibold text-ink">Registrar gasto</h3>
-      <p className="mt-0.5 text-[12px] text-ink-2">Se descuenta del disponible al instante.</p>
+      <p className="mt-0.5 text-[12px] text-ink-2">Se descuenta del disponible al instante. Si el proyecto ya venía en marcha, registra los gastos importantes con su fecha real, o ingresa el total ya consumido con el lápiz ✏️ de <strong className="font-semibold text-ink">Consumido</strong>.</p>
       <label className="mt-4 block">
         <span className="mb-1.5 block text-[12px] font-medium text-ink-2">Concepto</span>
         <input value={f.concept} onChange={(e) => setF((x) => ({ ...x, concept: e.target.value }))} maxLength={160} placeholder="Ej. Cemento gris · 120 bultos" className={inputCls} />
@@ -490,6 +545,7 @@ function Row({ e, after, canEdit, onEdit }: { e: Expense; after: number; canEdit
         <p className="text-[12px] text-ink-2">
           {formatDate(e.date)} · {COST_CATEGORY_LABEL[e.category]}
           {payroll && <span className="ml-1.5 rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold text-brand">Nómina</span>}
+          {isOpening(e) && <span className="ml-1.5 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-semibold text-ink-2">Saldo inicial</span>}
         </p>
       </div>
       <div className="text-right">
