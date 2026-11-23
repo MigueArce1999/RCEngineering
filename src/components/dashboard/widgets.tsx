@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, Bar, BarChart, XAxis } from "recharts";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Boxes, CalendarDays, Check, Ellipsis, FileText, Info, Package, ChartColumn, Plus, TriangleAlert } from "lucide-react";
+import { ArrowRight, Boxes, CalendarDays, Check, Ellipsis, FileText, Info, Package, ChartColumn, Plus, TriangleAlert } from "lucide-react";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { useMemo, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,6 +12,7 @@ import { useCatalog } from "@/hooks/useCatalog";
 import { financialSummary, inventoryItems, plannedAt, quotesSummary, weeklyMovementCounts } from "@/lib/domain";
 import { cn, formatCOP, formatCOPMillions, formatNumber, formatPct, relativeDue, todayISO } from "@/lib/format";
 import { isRemote } from "@/lib/supabase";
+import { CATS, CAT_COLOR, counted } from "@/lib/financeUi";
 import { CardHeader, GlassButton, GlassCard, ProgressBar } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 import { PRIORITY_LABEL } from "./StageDetailDrawer";
@@ -224,69 +225,83 @@ export function useFinance() {
 
 export function FinanceOverview() {
   const f = useFinance();
-  const r = 30;
-  const c = 2 * Math.PI * r;
-  const over = f.deviationPct > 0;
-  if (!f.approvedBudget)
+  const { expenses } = useCatalog();
+  const quote = useProjectStore((st) => st.projects.find((p) => p.id === st.projectId)?.quotedValue ?? 0);
+  const quoteLabel = useProjectStore((st) => st.projects.find((p) => p.id === st.projectId)?.quoteLabel) || "Cotización";
+  const budget = f.approvedBudget;
+  if (!budget)
     return (
       <Widget fill={false} className="flex-1">
         <CardHeader icon={<ChartColumn size={20} strokeWidth={1.7} />} title="Panorama financiero" />
         <SetupEmpty text="Define el presupuesto aprobado para medir la ejecución financiera." step="budget" action="Definir presupuesto" />
       </Widget>
     );
+
+  const spent = f.executed;
+  const over = f.available < 0;
+  const usedOfFunds = spent / budget;
+  const tone = over ? "critical" : usedOfFunds >= 0.85 ? "warning" : "good";
+  const hasQuote = quote > 0;
+  const scale = Math.max(quote, budget, spent) || 1;
+  const w = (v: number) => `${Math.min(100, (v / scale) * 100)}%`;
+  const byCat = CATS.map((c) => ({ c, v: expenses.filter((e) => e.category === c && counted(e)).reduce((a, e) => a + e.amount, 0) })).filter((x) => x.v > 0);
+  const fundsLeft = Math.max(0, budget - spent);
+  const pending = hasQuote ? Math.max(0, quote - budget) : 0;
+
   return (
     <Widget fill={false} className="flex-1">
       <CardHeader icon={<ChartColumn size={20} strokeWidth={1.7} />} title="Panorama financiero" action={<CardMenu items={[{ label: "Ver finanzas", onSelect: () => open("finance") }]} />} />
-      <div className="mt-2 mb-3 flex items-center gap-4">
-        <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-2.5">
-          <div>
-            <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink"><AnimatedNumber value={f.executed} format={formatCOPMillions} /></dd>
-            <dt className="text-[12px] text-ink-2">Consumido</dt>
-          </div>
-          <div>
-            <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink"><AnimatedNumber value={f.approvedBudget} format={formatCOPMillions} /></dd>
-            <dt className="text-[12px] text-ink-2">Presupuesto</dt>
-          </div>
-          <div>
-            <dd className="tabular text-[14px] font-medium text-ink"><AnimatedNumber value={f.available} format={formatCOPMillions} /></dd>
-            <dt className="text-[12px] text-ink-2">Disponible</dt>
-          </div>
-          <div>
-            <dd className={cn("tabular inline-flex items-center gap-0.5 text-[14px] font-medium", over ? "text-[#94631a]" : "text-[#13704a]")}>
-              {over ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-              {formatPct(Math.abs(f.deviationPct))}
-            </dd>
-            <dt className="text-[12px] text-ink-2">vs. plan a la fecha</dt>
-          </div>
-        </dl>
-        <div className="relative h-[76px] w-[76px] shrink-0" role="img" aria-label={`Ejecución financiera ${formatPct(f.executionPct)}`}>
-          <svg viewBox="0 0 76 76" className="h-full w-full -rotate-90">
-            <circle cx="38" cy="38" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="7" />
-            <motion.circle
-              cx="38"
-              cy="38"
-              r={r}
-              fill="none"
-              stroke="#1b7a50"
-              strokeWidth="7"
-              strokeLinecap="round"
-              strokeDasharray={c}
-              initial={{ strokeDashoffset: c }}
-              animate={{ strokeDashoffset: c * (1 - f.executionPct) }}
-              transition={{ duration: 1.4, delay: 0.3, ease: [0.32, 0.72, 0, 1] }}
-            />
-          </svg>
-          <div className="absolute inset-0 grid place-items-center text-center">
-            <div>
-              <p className="tabular text-[14px] leading-none font-semibold text-ink"><AnimatedNumber value={f.executionPct * 100} format={pctInt} /></p>
-              <p className="mt-0.5 text-[10px] text-ink-2">Consumido</p>
-            </div>
-          </div>
+
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[12px] text-ink-2">{over ? "Fondos excedidos por" : "Disponible de lo asignado"}</p>
+          <p className={cn("tabular mt-0.5 text-[28px] leading-none font-semibold tracking-[-0.03em]", over ? "text-danger" : "text-ink")}>
+            <AnimatedNumber value={Math.abs(f.available)} format={formatCOPMillions} />
+          </p>
         </div>
+        <span className={cn("mb-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone === "good" ? "bg-accent-soft text-[#13704a]" : tone === "warning" ? "bg-warning-soft text-[#7c5314]" : "bg-danger-soft text-danger")}>
+          {tone === "good" ? <Check size={12} /> : <TriangleAlert size={12} />}
+          {tone === "good" ? "Fondos suficientes" : tone === "warning" ? "Quedan pocos fondos" : "Sin fondos"}
+        </span>
       </div>
-      <button onClick={() => open("finance")} className="mt-auto flex items-center justify-center gap-1.5 rounded-[12px] bg-surface-2/80 py-2 text-[13px] font-medium text-ink transition hover:bg-surface-2">
-        <Plus size={15} /> Registrar gasto
-      </button>
+
+      {/* Consumido por categoría · disponible · por aprobar, sobre una misma escala */}
+      <div className="mt-4 flex h-3 w-full gap-[2px] overflow-hidden rounded-full bg-surface-2" role="img" aria-label={`Consumido ${formatPct(usedOfFunds)} de lo asignado`}>
+        {byCat.map(({ c, v }, i) => (
+          <motion.span key={c} className="h-full" style={{ backgroundColor: CAT_COLOR[c] }} initial={{ width: 0 }} whileInView={{ width: w(v) }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.2 + i * 0.07, ease: [0.32, 0.72, 0, 1] }} />
+        ))}
+        <motion.span className="h-full bg-surface-3" initial={{ width: 0 }} whileInView={{ width: w(fundsLeft) }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.5, ease: [0.32, 0.72, 0, 1] }} />
+        {pending > 0 && <motion.span className="h-full rounded-[3px] border border-dashed border-line-strong" initial={{ width: 0 }} whileInView={{ width: w(pending) }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.7, ease: [0.32, 0.72, 0, 1] }} />}
+      </div>
+      <p className="mt-1.5 text-[11px] text-ink-3">
+        {formatPct(usedOfFunds)} de lo asignado consumido{hasQuote && pending > 0 ? ` · ${formatCOPMillions(pending)} por aprobar` : ""}
+      </p>
+
+      <dl className={cn("mt-4 grid gap-px overflow-hidden rounded-[14px] bg-line/70", hasQuote ? "grid-cols-3" : "grid-cols-2")}>
+        {hasQuote && (
+          <div className="bg-surface-2/60 px-3 py-2.5">
+            <dd className="tabular text-[14px] font-semibold whitespace-nowrap text-ink">{formatCOPMillions(quote)}</dd>
+            <dt className="truncate text-[11px] text-ink-2" title={quoteLabel}>Cotización</dt>
+          </div>
+        )}
+        <div className="bg-surface-2/60 px-3 py-2.5">
+          <dd className="tabular text-[14px] font-semibold whitespace-nowrap text-ink">{formatCOPMillions(budget)}</dd>
+          <dt className="truncate text-[11px] text-ink-2">Asignado</dt>
+        </div>
+        <div className="bg-surface-2/60 px-3 py-2.5">
+          <dd className="tabular text-[14px] font-semibold whitespace-nowrap text-ink">{formatCOPMillions(spent)}</dd>
+          <dt className="truncate text-[11px] text-ink-2">Consumido</dt>
+        </div>
+      </dl>
+
+      <div className="mt-auto flex gap-2 pt-4">
+        <button onClick={() => open("finance")} className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand text-[13px] font-semibold text-white transition hover:brightness-110 active:scale-[0.98]">
+          <Plus size={15} /> Registrar gasto
+        </button>
+        <button onClick={() => open("finance")} className="flex h-10 items-center gap-1 rounded-full bg-surface-2 px-4 text-[13px] font-medium text-ink transition hover:bg-surface-3 active:scale-[0.98]">
+          Ver todo <ArrowRight size={14} />
+        </button>
+      </div>
     </Widget>
   );
 }

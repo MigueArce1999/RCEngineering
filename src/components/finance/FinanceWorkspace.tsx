@@ -11,6 +11,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useCan } from "@/stores/authStore";
 import { useFinance } from "@/components/dashboard/widgets";
 import { COST_CATEGORY_LABEL } from "@/lib/domain";
+import { CATS, CAT_COLOR, counted } from "@/lib/financeUi";
 import { cn, formatCOP, formatCOPMillions, formatDate, formatPct, formatShortDate, parseISODate, todayISO } from "@/lib/format";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Deferred } from "@/components/ui/overlays";
@@ -18,16 +19,12 @@ import { GlassButton } from "@/components/ui/primitives";
 import { ConfirmDelete, inputCls } from "@/components/docs/shared";
 
 const EXPO = [0.16, 1, 0.3, 1] as const;
-const CATS: CostCategory[] = ["materials", "labor", "equipment", "other"];
-/** Paleta categórica validada (orden fijo; el color sigue a la categoría, nunca al rango) */
-const CAT_COLOR: Record<CostCategory, string> = { materials: "#1b7a50", labor: "#3b6fd4", equipment: "#d18a1f", other: "#9a5fc9" };
 const CAT_ICON: Record<CostCategory, ReactNode> = { materials: <Package size={15} />, labor: <HardHat size={15} />, equipment: <Truck size={15} />, other: <Receipt size={15} /> };
 const monthFmt = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" });
 const digits = (v: string) => Number(v.replace(/\D/g, "").slice(0, 14)) || 0;
 const money = (n: number) => (n ? new Intl.NumberFormat("es-CO").format(n) : "");
 /** Consumo acumulado antes de empezar a registrar en la app (proyectos que ya venían en marcha) */
 const OPENING = "Consumo previo (antes de usar la app)";
-const counted = (e: Expense) => e.counts !== false;
 const isOpening = (e: Expense) => e.concept === OPENING;
 /** Los gastos de nómina se crean y anulan desde el módulo de Nómina */
 const isPayroll = (e: Expense) => e.category === "labor" && e.concept.startsWith("Nómina ·");
