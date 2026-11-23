@@ -340,6 +340,10 @@ export async function insertExpense(projectId: string, e: Expense) {
   affected(await db().from("expenses").insert({ id: e.id, project_id: projectId, date: e.date, concept: e.concept, category: e.category, amount: e.amount }).select("id"));
 }
 
+export async function updateExpense(e: Expense) {
+  affected(await db().from("expenses").update({ date: e.date, concept: e.concept, category: e.category, amount: e.amount }).eq("id", e.id).select("id"));
+}
+
 export async function deleteExpense(id: string) {
   affected(await db().from("expenses").delete().eq("id", id).select("id"));
 }

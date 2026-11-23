@@ -75,6 +75,7 @@ interface ProjectState extends Catalog {
   removeTask: (id: string) => Promise<boolean>;
   setBudget: (amount: number) => Promise<boolean>;
   addExpense: (input: Omit<Expense, "id">) => Promise<boolean>;
+  updateExpense: (e: Expense) => Promise<boolean>;
   removeExpense: (id: string) => Promise<boolean>;
   addMaterial: (input: Omit<Material, "id" | "receivedQty" | "consumedQty">, initialReceived: number) => Promise<boolean>;
   removeMaterial: (id: string) => Promise<boolean>;
@@ -366,6 +367,13 @@ export const useProjectStore = create<ProjectState>()(
           const e = { ...input, id: uid("exp") };
           const ok = await attempt("gasto", () => api.insertExpense(get().projectId, e));
           if (ok) set((s) => ({ expenses: [...s.expenses, e].sort((a, b) => a.date.localeCompare(b.date)) }));
+          return ok;
+        },
+
+        updateExpense: async (e) => {
+          if (!guard("finance.manage")) return false;
+          const ok = await attempt("gasto", () => api.updateExpense(e));
+          if (ok) set((s) => ({ expenses: s.expenses.map((x) => (x.id === e.id ? e : x)).sort((a, b) => a.date.localeCompare(b.date)) }));
           return ok;
         },
 

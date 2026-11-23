@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, Bar, BarChart, XAxis } from "recharts";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Boxes, CalendarDays, Check, Ellipsis, FileText, Info, Package, ChartColumn, TriangleAlert } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Boxes, CalendarDays, Check, Ellipsis, FileText, Info, Package, ChartColumn, Plus, TriangleAlert } from "lucide-react";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { useMemo, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -10,7 +10,8 @@ import { useUI, type ModuleKey } from "@/stores/uiStore";
 import { DEMO_BASE_DATE } from "@/data/demo";
 import { useCatalog } from "@/hooks/useCatalog";
 import { financialSummary, inventoryItems, plannedAt, quotesSummary, weeklyMovementCounts } from "@/lib/domain";
-import { cn, formatCOP, formatCOPMillions, formatNumber, formatPct, relativeDue } from "@/lib/format";
+import { cn, formatCOP, formatCOPMillions, formatNumber, formatPct, relativeDue, todayISO } from "@/lib/format";
+import { isRemote } from "@/lib/supabase";
 import { CardHeader, GlassButton, GlassCard, ProgressBar } from "@/components/ui/primitives";
 import { Tooltip } from "@/components/ui/overlays";
 import { PRIORITY_LABEL } from "./StageDetailDrawer";
@@ -216,7 +217,9 @@ export function InventoryWidget() {
 // ── D · Finanzas ────────────────────────────────────────────────────────
 export function useFinance() {
   const { expenses, plannedCurve, approvedBudget } = useCatalog();
-  return useMemo(() => financialSummary(approvedBudget, expenses, plannedAt(plannedCurve, DEMO_BASE_DATE)), [approvedBudget, expenses, plannedCurve]);
+  // Con datos reales el corte es hoy; en la demostración, la fecha fija de los datos de ejemplo
+  const cut = isRemote ? todayISO() : DEMO_BASE_DATE;
+  return useMemo(() => financialSummary(approvedBudget, expenses, plannedAt(plannedCurve, cut)), [approvedBudget, expenses, plannedCurve, cut]);
 }
 
 export function FinanceOverview() {
@@ -234,19 +237,19 @@ export function FinanceOverview() {
   return (
     <Widget fill={false} className="flex-1">
       <CardHeader icon={<ChartColumn size={20} strokeWidth={1.7} />} title="Panorama financiero" action={<CardMenu items={[{ label: "Ver finanzas", onSelect: () => open("finance") }]} />} />
-      <div className="mt-2 flex items-center gap-4">
+      <div className="mt-2 mb-3 flex items-center gap-4">
         <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-2.5">
           <div>
             <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink"><AnimatedNumber value={f.executed} format={formatCOPMillions} /></dd>
-            <dt className="text-[12px] text-ink-2">Ejecutado</dt>
+            <dt className="text-[12px] text-ink-2">Consumido</dt>
           </div>
           <div>
             <dd className="tabular text-[16px] font-semibold whitespace-nowrap text-ink"><AnimatedNumber value={f.approvedBudget} format={formatCOPMillions} /></dd>
-            <dt className="text-[12px] text-ink-2">Presupuestado</dt>
+            <dt className="text-[12px] text-ink-2">Presupuesto</dt>
           </div>
           <div>
             <dd className="tabular text-[14px] font-medium text-ink"><AnimatedNumber value={f.available} format={formatCOPMillions} /></dd>
-            <dt className="text-[12px] text-ink-2">Saldo</dt>
+            <dt className="text-[12px] text-ink-2">Disponible</dt>
           </div>
           <div>
             <dd className={cn("tabular inline-flex items-center gap-0.5 text-[14px] font-medium", over ? "text-[#94631a]" : "text-[#13704a]")}>
@@ -276,12 +279,14 @@ export function FinanceOverview() {
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
               <p className="tabular text-[14px] leading-none font-semibold text-ink"><AnimatedNumber value={f.executionPct * 100} format={pctInt} /></p>
-              <p className="mt-0.5 text-[10px] text-ink-2">Ejecución</p>
+              <p className="mt-0.5 text-[10px] text-ink-2">Consumido</p>
             </div>
           </div>
         </div>
       </div>
-      <p className="mt-auto pt-3 text-[11px] text-ink-3">Avance financiero = ejecutado / presupuesto. Independiente del avance físico.</p>
+      <button onClick={() => open("finance")} className="mt-auto flex items-center justify-center gap-1.5 rounded-[12px] bg-surface-2/80 py-2 text-[13px] font-medium text-ink transition hover:bg-surface-2">
+        <Plus size={15} /> Registrar gasto
+      </button>
     </Widget>
   );
 }

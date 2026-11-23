@@ -6,12 +6,12 @@ import type { QuoteStatus } from "@/types";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useProjectData } from "@/hooks/useProjectData";
-import { DEMO_BASE_DATE } from "@/data/demo";
 import { useCatalog } from "@/hooks/useCatalog";
 import { useAuth } from "@/stores/authStore";
 import { UsersPanel } from "./UsersPanel";
 import { PayrollPanel } from "@/components/payroll/PayrollPanel";
-import { COST_CATEGORY_LABEL, STAGE_STATUS_LABEL, inventoryItems, quoteTotals } from "@/lib/domain";
+import { FinanceWorkspace } from "@/components/finance/FinanceWorkspace";
+import { STAGE_STATUS_LABEL, inventoryItems, quoteTotals } from "@/lib/domain";
 import { cn, formatCOP, formatDate, formatNumber, formatPct } from "@/lib/format";
 import { Drawer, Modal } from "@/components/ui/overlays";
 import { Avatar, GlassButton, ProgressBar, StatusBadge } from "@/components/ui/primitives";
@@ -63,9 +63,7 @@ export function ModulePanels() {
       <Drawer open={activeModule === "inventory"} onOpenChange={close} title="Inventario" description="Stock en bodega de obra y movimientos" width={720}>
         <InventoryPanel />
       </Drawer>
-      <Drawer open={activeModule === "finance"} onOpenChange={close} title="Finanzas" description={`Corte al ${formatDate(DEMO_BASE_DATE)} · COP`} width={680}>
-        <FinancePanel />
-      </Drawer>
+<FinanceWorkspace />
       <MaterialDetailModal />
       <ProjectDetailModal />
       <SettingsModal />
@@ -222,66 +220,6 @@ function InventoryPanel() {
           ))}
         </Table>
       </div>
-    </div>
-  );
-}
-
-function FinancePanel() {
-  const { expenses, approvedBudget } = useCatalog();
-  const f = useFinance();
-  const { overall } = useProjectData();
-  const byCat = useMemo(() => {
-    const acc: Record<string, number> = {};
-    expenses.forEach((e) => (acc[e.category] = (acc[e.category] ?? 0) + e.amount));
-    return acc;
-  }, [expenses]);
-  return (
-    <div className="space-y-5 px-6 pb-6">
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          ["Presupuesto aprobado", formatCOP(approvedBudget)],
-          ["Valor ejecutado", formatCOP(f.executed)],
-          ["Saldo disponible", formatCOP(f.available)],
-          ["Planeado a la fecha", formatCOP(f.plannedToDate)],
-        ].map(([l, v]) => (
-          <div key={l} className="surface-card p-4">
-            <p className="text-[12px] text-ink-2">{l}</p>
-            <p className="tabular mt-1 text-[17px] font-semibold text-ink">{v}</p>
-          </div>
-        ))}
-      </div>
-      <div className="surface-card space-y-4 p-4">
-        <div>
-          <div className="flex justify-between text-[13px]">
-            <span className="text-ink">Avance financiero (ejecutado / presupuesto)</span>
-            <span className="tabular font-semibold">{formatPct(f.executionPct)}</span>
-          </div>
-          <ProgressBar value={f.executionPct} className="mt-2" />
-        </div>
-        <div>
-          <div className="flex justify-between text-[13px]">
-            <span className="text-ink">Avance físico de obra (ponderado por etapas)</span>
-            <span className="tabular font-semibold">{formatPct(overall)}</span>
-          </div>
-          <ProgressBar value={overall} className="mt-2" />
-        </div>
-        <p className="text-[12px] text-ink-2">
-          Desviación frente a lo planeado a la fecha: <strong className="tabular text-ink">{formatPct(f.deviationPct)}</strong>. Incluye compras anticipadas de acero, cemento y bloque.
-        </p>
-      </div>
-      <Table head={["Fecha", "Concepto", "Categoría", "Valor"]} align={["left", "left", "left", "right"]}>
-        {[...expenses].reverse().map((e) => (
-          <tr key={e.id}>
-            <td className="px-4 py-2.5 text-ink-2">{formatDate(e.date)}</td>
-            <td className="px-4 py-2.5 text-ink">{e.concept}</td>
-            <td className="px-4 py-2.5 text-ink-2">{COST_CATEGORY_LABEL[e.category]}</td>
-            <td className="px-4 py-2.5 text-right">{formatCOP(e.amount)}</td>
-          </tr>
-        ))}
-      </Table>
-      <p className="text-[12px] text-ink-3">
-        Por categoría: {Object.entries(byCat).map(([k, v]) => `${COST_CATEGORY_LABEL[k as keyof typeof COST_CATEGORY_LABEL]} ${formatCOP(v)}`).join(" · ")}
-      </p>
     </div>
   );
 }
