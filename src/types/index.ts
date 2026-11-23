@@ -161,6 +161,8 @@ export interface Expense {
   concept: string;
   category: CostCategory;
   amount: number;
+  /** false = se registra pero no se descuenta del presupuesto (p. ej. lo paga un tercero). Ausente = true */
+  counts?: boolean;
 }
 
 export interface FinancialSummary {

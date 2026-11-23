@@ -204,7 +204,7 @@ export async function loadProjectBundle(projectId: string): Promise<ProjectBundl
       supplier: m.supplier,
     })),
     movements: movements.map((m) => ({ id: m.id, materialId: m.material_id, type: m.type, qty: num(m.qty), date: m.date, reference: m.reference })),
-    expenses: expenses.map((e) => ({ id: e.id, date: e.date, concept: e.concept, category: e.category, amount: num(e.amount) })),
+    expenses: expenses.map((e) => ({ id: e.id, date: e.date, concept: e.concept, category: e.category, amount: num(e.amount), counts: e.counts !== false })),
     plannedCurve: curve.map((c2) => ({ date: c2.date, amount: num(c2.amount) })),
     blueprints: blueprints.map(toBlueprint),
     approvedBudget: num(project?.approved_budget),
@@ -337,11 +337,11 @@ export async function setBudget(projectId: string, amount: number, curve: { date
 }
 
 export async function insertExpense(projectId: string, e: Expense) {
-  affected(await db().from("expenses").insert({ id: e.id, project_id: projectId, date: e.date, concept: e.concept, category: e.category, amount: e.amount }).select("id"));
+  affected(await db().from("expenses").insert({ id: e.id, project_id: projectId, date: e.date, concept: e.concept, category: e.category, amount: e.amount, counts: e.counts !== false }).select("id"));
 }
 
 export async function updateExpense(e: Expense) {
-  affected(await db().from("expenses").update({ date: e.date, concept: e.concept, category: e.category, amount: e.amount }).eq("id", e.id).select("id"));
+  affected(await db().from("expenses").update({ date: e.date, concept: e.concept, category: e.category, amount: e.amount, counts: e.counts !== false }).eq("id", e.id).select("id"));
 }
 
 export async function deleteExpense(id: string) {

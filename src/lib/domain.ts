@@ -193,7 +193,7 @@ export function plannedAt(curve: { date: string; amount: number }[], iso: string
 }
 
 export function financialSummary(approvedBudget: number, expenses: Expense[], plannedToDate: number): FinancialSummary {
-  const executed = expenses.reduce((s, e) => s + e.amount, 0);
+  const executed = expenses.reduce((s, e) => s + (e.counts === false ? 0 : e.amount), 0);
   return {
     approvedBudget,
     executed,

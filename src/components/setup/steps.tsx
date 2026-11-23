@@ -433,7 +433,7 @@ export function BudgetStep() {
   const toast = useUI((s) => s.toast);
   const [budget, setBudgetInput] = useState(approved || 0);
   const [exp, setExp] = useState({ date: todayISO(), concept: "", category: "materials" as CostCategory, amount: 0 });
-  const executed = expenses.reduce((s, e) => s + e.amount, 0);
+  const executed = expenses.reduce((s, e) => s + (e.counts === false ? 0 : e.amount), 0);
 
   return (
     <div className="space-y-8">

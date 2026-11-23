@@ -27,6 +27,7 @@ const digits = (v: string) => Number(v.replace(/\D/g, "").slice(0, 14)) || 0;
 const money = (n: number) => (n ? new Intl.NumberFormat("es-CO").format(n) : "");
 /** Consumo acumulado antes de empezar a registrar en la app (proyectos que ya venían en marcha) */
 const OPENING = "Consumo previo (antes de usar la app)";
+const counted = (e: Expense) => e.counts !== false;
 const isOpening = (e: Expense) => e.concept === OPENING;
 /** Los gastos de nómina se crean y anulan desde el módulo de Nómina */
 const isPayroll = (e: Expense) => e.category === "labor" && e.concept.startsWith("Nómina ·");
@@ -151,8 +152,9 @@ function BudgetHero({ budget, spent, available, expenses, canEdit }: { budget: n
   const used = budget ? spent / budget : 0;
   const over = available < 0;
   const tone = over ? "critical" : used >= 0.85 ? "warning" : "good";
-  const byCat = CATS.map((c) => ({ c, v: expenses.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0) })).filter((x) => x.v > 0);
+  const byCat = CATS.map((c) => ({ c, v: expenses.filter((e) => e.category === c && counted(e)).reduce((s, e) => s + e.amount, 0) })).filter((x) => x.v > 0);
   const scale = Math.max(budget, spent);
+  const excluded = expenses.filter((e) => !counted(e)).reduce((s, e) => s + e.amount, 0);
 
   return (
     <section className="overflow-hidden rounded-[24px] bg-[#0f2a20] p-5 text-white shadow-[var(--shadow-md)] sm:p-7">
@@ -187,6 +189,11 @@ function BudgetHero({ budget, spent, available, expenses, canEdit }: { budget: n
         </div>
       </div>
 
+      {excluded > 0 && (
+        <p className="mt-4 text-[12px] text-white/55">
+          <span className="tabular font-semibold text-white/80">{formatCOP(excluded)}</span> en gastos registrados que no cuentan en el presupuesto (los paga un tercero).
+        </p>
+      )}
       <div className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-[16px] bg-white/10">
         <Stat label="Presupuesto">
           {editing ? (
@@ -290,7 +297,7 @@ function BalanceChart({ budget, expenses }: { budget: number; expenses: Expense[
   const startDate = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId)?.startDate);
   const data = useMemo(() => {
     const byDay = new Map<string, number>();
-    for (const e of expenses) byDay.set(e.date, (byDay.get(e.date) ?? 0) + e.amount);
+    for (const e of expenses) if (counted(e)) byDay.set(e.date, (byDay.get(e.date) ?? 0) + e.amount);
     const days = [...byDay.keys()].sort();
     const start = startDate && (!days[0] || startDate < days[0]) ? startDate : (days[0] ?? todayISO());
     let bal = budget;
@@ -346,7 +353,7 @@ function BalanceChart({ budget, expenses }: { budget: number; expenses: Expense[
 // ── Registrar gasto ─────────────────────────────────────────────────────
 function AddExpense({ onAdded, available }: { onAdded: (id: string) => void; available: number }) {
   const add = useProjectStore((s) => s.addExpense);
-  const [f, setF] = useState({ concept: "", amount: 0, category: "materials" as CostCategory, date: todayISO() });
+  const [f, setF] = useState({ concept: "", amount: 0, category: "materials" as CostCategory, date: todayISO(), counts: true });
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -360,7 +367,7 @@ function AddExpense({ onAdded, available }: { onAdded: (id: string) => void; ava
     if (ok) {
       const added = useProjectStore.getState().expenses.find((x) => !before.has(x.id));
       if (added) onAdded(added.id);
-      setF((x) => ({ ...x, concept: "", amount: 0 }));
+      setF((x) => ({ ...x, concept: "", amount: 0, counts: true }));
       setDone(true);
       window.setTimeout(() => setDone(false), 1600);
     }
@@ -393,8 +400,16 @@ function AddExpense({ onAdded, available }: { onAdded: (id: string) => void; ava
           </button>
         ))}
       </div>
+      <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-[12px] bg-surface-2/70 px-3 py-2.5 text-[12px] leading-snug text-ink-2">
+        <input type="checkbox" checked={f.counts} onChange={(e) => setF((x) => ({ ...x, counts: e.target.checked }))} className="mt-0.5 h-4 w-4 shrink-0 accent-[#2ea06e]" />
+        <span>
+          <span className="font-medium text-ink">Cuenta en el presupuesto</span>
+          <br />
+          Desmárcalo si lo paga un tercero (queda registrado pero no descuenta).
+        </span>
+      </label>
       <AnimatePresence>
-        {f.amount > 0 && (
+        {f.amount > 0 && f.counts && (
           <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="tabular overflow-hidden pt-3 text-[12px] text-ink-2">
             Disponible después: <span className={cn("font-semibold", available - f.amount < 0 ? "text-danger" : "text-ink")}>{formatCOP(available - f.amount)}</span>
           </motion.p>
@@ -410,7 +425,7 @@ function AddExpense({ onAdded, available }: { onAdded: (id: string) => void; ava
 // ── Por categoría ───────────────────────────────────────────────────────
 function ByCategory({ expenses, spent }: { expenses: Expense[]; spent: number }) {
   const rows = CATS.map((c) => {
-    const list = expenses.filter((e) => e.category === c);
+    const list = expenses.filter((e) => e.category === c && counted(e));
     return { c, v: list.reduce((s, e) => s + e.amount, 0), n: list.length };
   });
   return (
@@ -452,8 +467,9 @@ function Movements({ expenses, budget, canEdit, fresh }: { expenses: Expense[]; 
     const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
     const out: { e: Expense; after: number }[] = [];
     sorted.reduce((bal, e) => {
-      out.push({ e, after: bal - e.amount });
-      return bal - e.amount;
+      const next = counted(e) ? bal - e.amount : bal;
+      out.push({ e, after: next });
+      return next;
     }, budget);
     return out.reverse();
   }, [expenses, budget]);
@@ -471,7 +487,7 @@ function Movements({ expenses, budget, canEdit, fresh }: { expenses: Expense[]; 
   }, [visible]);
 
   const exportCSV = () => {
-    const lines = [["Fecha", "Concepto", "Categoría", "Valor", "Saldo después"], ...rows.map(({ e, after }) => [e.date, e.concept, COST_CATEGORY_LABEL[e.category], String(e.amount), String(after)])];
+    const lines = [["Fecha", "Concepto", "Categoría", "Valor", "Cuenta en el presupuesto", "Saldo después"], ...rows.map(({ e, after }) => [e.date, e.concept, COST_CATEGORY_LABEL[e.category], String(e.amount), counted(e) ? "Sí" : "No", String(after)])];
     const csv = "﻿" + lines.map((l) => l.map((c) => `"${c.replace(/"/g, '""')}"`).join(";")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -534,38 +550,51 @@ function Movements({ expenses, budget, canEdit, fresh }: { expenses: Expense[]; 
 
 function Row({ e, after, canEdit, onEdit }: { e: Expense; after: number; canEdit: boolean; onEdit: () => void }) {
   const remove = useProjectStore((s) => s.removeExpense);
+  const update = useProjectStore((s) => s.updateExpense);
   const payroll = isPayroll(e);
+  const on = counted(e);
   return (
-    <div className="group flex items-center gap-3 px-3 py-2.5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-surface-2" style={{ color: CAT_COLOR[e.category] }}>
+    <div className="group flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 sm:flex-nowrap">
+      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-surface-2", !on && "opacity-50")} style={{ color: CAT_COLOR[e.category] }}>
         {CAT_ICON[e.category]}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-medium text-ink">{e.concept}</p>
+        <p className={cn("truncate text-[14px] font-medium", on ? "text-ink" : "text-ink-3")}>{e.concept}</p>
         <p className="text-[12px] text-ink-2">
           {formatDate(e.date)} · {COST_CATEGORY_LABEL[e.category]}
           {payroll && <span className="ml-1.5 rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold text-brand">Nómina</span>}
           {isOpening(e) && <span className="ml-1.5 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-semibold text-ink-2">Saldo inicial</span>}
+          {!on && <span className="ml-1.5 rounded-full bg-warning-soft px-1.5 py-px text-[10px] font-semibold text-[#7c5314]">Fuera del presupuesto</span>}
         </p>
       </div>
       <div className="text-right">
-        <p className="tabular text-[14px] font-semibold text-ink">−{formatCOP(e.amount)}</p>
-        <p className={cn("tabular text-[11px]", after < 0 ? "text-danger" : "text-ink-3")}>Saldo {formatCOP(after)}</p>
+        <p className={cn("tabular text-[14px] font-semibold", on ? "text-ink" : "text-ink-3 line-through decoration-ink-3/50")}>{on ? "−" : ""}{formatCOP(e.amount)}</p>
+        <p className={cn("tabular text-[11px]", on && after < 0 ? "text-danger" : "text-ink-3")}>{on ? `Saldo ${formatCOP(after)}` : "No descuenta"}</p>
       </div>
       {canEdit && (
-        <div className="flex w-[76px] shrink-0 justify-end gap-0.5 opacity-100 transition sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-          {payroll ? (
-            <span className="grid h-8 w-8 place-items-center text-ink-3" title="Se gestiona desde Nómina (reabre la liquidación para anularlo)">
-              <Lock size={14} />
-            </span>
-          ) : (
-            <>
-              <button onClick={onEdit} className="grid h-8 w-8 place-items-center rounded-full text-ink-2 transition hover:bg-surface-2 hover:text-ink" aria-label={`Editar ${e.concept}`}>
-                <Pencil size={14} />
-              </button>
+        <div className="flex shrink-0 items-center justify-end gap-1">
+          <button
+            role="switch"
+            aria-checked={on}
+            onClick={() => void update({ ...e, counts: !on })}
+            title={on ? "Cuenta en el presupuesto. Toca para sacarlo (lo paga un tercero)" : "No cuenta en el presupuesto. Toca para incluirlo"}
+            className={cn("relative h-6 w-10 shrink-0 rounded-full transition-colors duration-300", on ? "bg-[#2ea06e]" : "bg-surface-3")}
+          >
+            <span className={cn("absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-[var(--shadow-sm)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]", on && "translate-x-4")} />
+            <span className="sr-only">{on ? "Cuenta en el presupuesto" : "Fuera del presupuesto"}</span>
+          </button>
+          <div className="flex w-[76px] justify-end gap-0.5 opacity-100 transition sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+            <button onClick={onEdit} className="grid h-8 w-8 place-items-center rounded-full text-ink-2 transition hover:bg-surface-2 hover:text-ink" aria-label={`Editar ${e.concept}`}>
+              <Pencil size={14} />
+            </button>
+            {payroll ? (
+              <span className="grid h-8 w-8 place-items-center text-ink-3" title="Para anular este gasto reabre la liquidación en Nómina">
+                <Lock size={14} />
+              </span>
+            ) : (
               <ConfirmDelete size="sm" label="" className="min-w-8 px-2" onConfirm={() => void remove(e.id)} />
-            </>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -598,7 +627,11 @@ function EditRow({ e, onDone }: { e: Expense; onDone: () => void }) {
         ))}
       </select>
       <input type="date" value={f.date} max={todayISO()} onChange={(ev) => ev.target.value && setF((x) => ({ ...x, date: ev.target.value }))} className={cn(inputCls, "h-9 px-2 text-[13px]")} aria-label="Fecha" />
-      <div className="flex gap-1">
+      <div className="flex flex-wrap items-center gap-1 sm:col-span-5">
+        <label className="mr-auto flex items-center gap-2 text-[12px] text-ink-2">
+          <input type="checkbox" checked={f.counts !== false} onChange={(ev) => setF((x) => ({ ...x, counts: ev.target.checked }))} className="h-4 w-4 accent-[#2ea06e]" />
+          Cuenta en el presupuesto
+        </label>
         <GlassButton type="submit" variant="primary" size="sm" disabled={busy}>
           Guardar
         </GlassButton>
