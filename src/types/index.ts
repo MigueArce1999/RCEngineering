@@ -25,6 +25,9 @@ export interface Project {
   /** true si el proyecto tiene datos cargados (en modo demo, solo RC-001) */
   hasDemoData: boolean;
   clientName?: string;
+  /** Valor cotizado (contrato) del proyecto o de la etapa; el presupuesto aprobado puede ser menor */
+  quotedValue?: number;
+  quoteLabel?: string;
   description?: string;
   currency?: string;
   /** Pasos opcionales del asistente marcados como "no aplica" */

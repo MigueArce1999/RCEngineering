@@ -75,6 +75,7 @@ interface ProjectState extends Catalog {
   removeTask: (id: string) => Promise<boolean>;
   setBudget: (amount: number) => Promise<boolean>;
   addExpense: (input: Omit<Expense, "id">) => Promise<boolean>;
+  setQuote: (label: string, value: number) => Promise<boolean>;
   updateExpense: (e: Expense) => Promise<boolean>;
   removeExpense: (id: string) => Promise<boolean>;
   addMaterial: (input: Omit<Material, "id" | "receivedQty" | "consumedQty">, initialReceived: number) => Promise<boolean>;
@@ -356,7 +357,7 @@ export const useProjectStore = create<ProjectState>()(
           if (!guard("finance.manage")) return false;
           const p = get().projects.find((x) => x.id === get().projectId);
           // Curva planeada inicial: inversión lineal entre la fecha de inicio y la de entrega
-          const curve = p ? [{ date: p.startDate, amount: 0 }, { date: p.plannedEndDate, amount }] : [];
+          const curve = p ? [{ date: p.startDate, amount: 0 }, { date: p.plannedEndDate, amount: p.quotedValue || amount }] : [];
           const ok = await attempt("presupuesto", () => api.setBudget(get().projectId, amount, curve));
           if (ok) set({ approvedBudget: amount, plannedCurve: curve });
           return ok;
@@ -367,6 +368,14 @@ export const useProjectStore = create<ProjectState>()(
           const e = { ...input, id: uid("exp") };
           const ok = await attempt("gasto", () => api.insertExpense(get().projectId, e));
           if (ok) set((s) => ({ expenses: [...s.expenses, e].sort((a, b) => a.date.localeCompare(b.date)) }));
+          return ok;
+        },
+
+        setQuote: async (label, value) => {
+          if (!guard("finance.manage")) return false;
+          const id = get().projectId;
+          const ok = await attempt("cotización", () => api.setQuote(id, label, value));
+          if (ok) set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, quotedValue: value, quoteLabel: label } : p)) }));
           return ok;
         },
 

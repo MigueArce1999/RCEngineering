@@ -82,6 +82,8 @@ const toProject = (r: Row): Project => ({
   plannedEndDate: r.planned_end_date,
   hasDemoData: r.has_demo_data,
   clientName: r.client_name ?? "",
+  quotedValue: num(r.quoted_value),
+  quoteLabel: r.quote_label ?? "Cotización",
   description: r.description ?? "",
   currency: r.currency ?? "COP",
   setupSkipped: r.setup_skipped ?? [],
@@ -334,6 +336,10 @@ export async function setBudget(projectId: string, amount: number, curve: { date
   affected(await db().from("projects").update({ approved_budget: amount }).eq("id", projectId).select("id"));
   check(await db().from("planned_curve").delete().eq("project_id", projectId).select("project_id"));
   if (curve.length) affected(await db().from("planned_curve").insert(curve.map((c) => ({ project_id: projectId, date: c.date, amount: c.amount }))).select("project_id"));
+}
+
+export async function setQuote(projectId: string, label: string, value: number) {
+  affected(await db().from("projects").update({ quoted_value: value, quote_label: label }).eq("id", projectId).select("id"));
 }
 
 export async function insertExpense(projectId: string, e: Expense) {

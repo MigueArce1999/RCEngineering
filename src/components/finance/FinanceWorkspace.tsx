@@ -144,90 +144,213 @@ function MoneyInput({ value, onChange, className, ...rest }: { value: number; on
   );
 }
 
-// ── Presupuesto · consumido · disponible ────────────────────────────────
+// ── Cotización · fondos asignados · consumido · disponible ──────────────
 function BudgetHero({ budget, spent, available, expenses, canEdit }: { budget: number; spent: number; available: number; expenses: Expense[]; canEdit: boolean }) {
-  const setBudget = useProjectStore((s) => s.setBudget);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(budget);
-  const used = budget ? spent / budget : 0;
+  const project = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId));
+  const quote = project?.quotedValue ?? 0;
+  const quoteLabel = project?.quoteLabel || "Cotización";
+  const hasQuote = quote > 0;
   const over = available < 0;
-  const tone = over ? "critical" : used >= 0.85 ? "warning" : "good";
+  const usedOfFunds = budget ? spent / budget : 0;
+  const tone = over ? "critical" : usedOfFunds >= 0.85 ? "warning" : "good";
+  // Todo se dibuja sobre una misma escala: la mayor entre cotización, fondos y consumo
+  const scale = Math.max(quote, budget, spent) || 1;
+  const pct = (v: number) => `${Math.min(100, (v / scale) * 100)}%`;
   const byCat = CATS.map((c) => ({ c, v: expenses.filter((e) => e.category === c && counted(e)).reduce((s, e) => s + e.amount, 0) })).filter((x) => x.v > 0);
-  const scale = Math.max(budget, spent);
   const excluded = expenses.filter((e) => !counted(e)).reduce((s, e) => s + e.amount, 0);
+  const fundsLeft = Math.max(0, budget - spent);
+  const pending = hasQuote ? Math.max(0, quote - budget) : 0; // por aprobar por los propietarios
+  const toExecute = hasQuote ? Math.max(0, quote - spent) : 0; // lo que falta por ejecutar de la cotización
 
   return (
     <section className="overflow-hidden rounded-[24px] bg-[#0f2a20] p-5 text-white shadow-[var(--shadow-md)] sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[13px] font-medium text-white/65">{over ? "Presupuesto excedido por" : "Disponible"}</p>
+          <p className="text-[13px] font-medium text-white/65">{over ? "Fondos excedidos por" : "Disponible de los fondos asignados"}</p>
           <p className={cn("tabular mt-1 text-[40px] leading-none font-semibold tracking-[-0.035em] sm:text-[56px]", over && "text-[#ff9c8f]")}>
             <AnimatedNumber value={Math.abs(available)} format={formatCOP} duration={1.4} />
           </p>
           <p className="mt-2 text-[14px] text-white/65">
-            de <span className="tabular font-medium text-white">{formatCOP(budget)}</span> presupuestados
+            de <span className="tabular font-medium text-white">{formatCOP(budget)}</span> asignados por los propietarios
           </p>
         </div>
         <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold", tone === "good" ? "bg-[#2ea06e]/20 text-[#8fe0b5]" : tone === "warning" ? "bg-[#d18a1f]/25 text-[#ffd08a]" : "bg-[#e5484d]/25 text-[#ffb0a8]")}>
           {tone === "good" ? <Check size={13} /> : <TrendingDown size={13} />}
-          {tone === "good" ? "Dentro del presupuesto" : tone === "warning" ? "Queda menos del 15 %" : "Sobrecosto"}
+          {tone === "good" ? "Fondos suficientes" : tone === "warning" ? "Quedan menos del 15 % de los fondos" : "Fondos agotados"}
         </span>
       </div>
 
-      {/* Barra de consumo: cada categoría ocupa su parte; lo que queda es el disponible */}
-      <div className="mt-7">
-        <div className="flex h-4 w-full gap-[2px] overflow-hidden rounded-full bg-white/10" role="img" aria-label={`Consumido ${formatPct(used)} del presupuesto`}>
-          {byCat.map(({ c, v }, i) => (
-            <motion.span key={c} className="h-full first:rounded-l-full" style={{ backgroundColor: CAT_COLOR[c] }} initial={{ width: 0 }} animate={{ width: `${(v / scale) * 100}%` }} transition={{ duration: 1.1, delay: 0.15 + i * 0.08, ease: EXPO }} title={`${COST_CATEGORY_LABEL[c]}: ${formatCOP(v)}`} />
-          ))}
+      {/* Una sola barra con tres niveles: consumido · fondos disponibles · por aprobar */}
+      <div className="mt-8">
+        <div className="relative">
+          <div className="flex h-5 w-full gap-[2px] overflow-hidden rounded-full bg-white/[0.07]" role="img" aria-label={`Consumido ${formatCOP(spent)}; fondos disponibles ${formatCOP(fundsLeft)}${hasQuote ? `; por aprobar ${formatCOP(pending)}` : ""}`}>
+            {byCat.map(({ c, v }, i) => (
+              <motion.span key={c} className="h-full" style={{ backgroundColor: CAT_COLOR[c] }} initial={{ width: 0 }} animate={{ width: pct(v) }} transition={{ duration: 1.1, delay: 0.15 + i * 0.08, ease: EXPO }} title={`${COST_CATEGORY_LABEL[c]}: ${formatCOP(v)}`} />
+            ))}
+            <motion.span className="h-full bg-white/35" initial={{ width: 0 }} animate={{ width: pct(fundsLeft) }} transition={{ duration: 1.1, delay: 0.5, ease: EXPO }} title={`Disponible: ${formatCOP(fundsLeft)}`} />
+            {hasQuote && pending > 0 && (
+              <motion.span className="h-full border border-dashed border-white/35 bg-transparent" style={{ borderRadius: 4 }} initial={{ width: 0 }} animate={{ width: pct(pending) }} transition={{ duration: 1.1, delay: 0.7, ease: EXPO }} title={`Por aprobar: ${formatCOP(pending)}`} />
+            )}
+          </div>
+          {/* Marca de los fondos asignados */}
+          {hasQuote && budget > 0 && budget < scale && (
+            <motion.span className="absolute -top-2 -bottom-2 w-px bg-white/70" initial={{ left: 0, opacity: 0 }} animate={{ left: pct(budget), opacity: 1 }} transition={{ duration: 1.1, delay: 0.8, ease: EXPO }} aria-hidden />
+          )}
         </div>
-        <div className="mt-2 flex justify-between text-[12px] text-white/55">
-          <span>
-            Consumido <span className="tabular font-semibold text-white">{formatPct(used)}</span>
-          </span>
-          <span>Disponible {formatPct(Math.max(0, 1 - used))}</span>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-white/65">
+          <Legend swatch={<span className="flex gap-0.5">{(byCat.length ? byCat : [{ c: "materials" as CostCategory }]).map(({ c }) => <i key={c} className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: CAT_COLOR[c] }} />)}</span>} label="Consumido" value={formatCOPMillions(spent)} />
+          <Legend swatch={<i className="h-2.5 w-2.5 rounded-[3px] bg-white/35" />} label="Disponible" value={formatCOPMillions(fundsLeft)} />
+          {hasQuote && <Legend swatch={<i className="h-2.5 w-2.5 rounded-[3px] border border-dashed border-white/50" />} label="Por aprobar" value={formatCOPMillions(pending)} />}
         </div>
       </div>
 
+      <div className={cn("mt-6 grid gap-px overflow-hidden rounded-[16px] bg-white/10", hasQuote ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-3")}>
+        {hasQuote && (
+          <Stat label={quoteLabel} sub="valor cotizado">
+            <QuoteEditor quote={quote} label={quoteLabel} canEdit={canEdit} />
+          </Stat>
+        )}
+        <Stat label="Asignado" sub={hasQuote ? `${formatPct(quote ? budget / quote : 0)} de la cotización` : "por los propietarios"}>
+          <BudgetEditor budget={budget} canEdit={canEdit} />
+        </Stat>
+        <Stat label="Consumido" sub={budget ? `${formatPct(usedOfFunds)} de lo asignado` : undefined}>
+          <OpeningEditor spent={spent} expenses={expenses} canEdit={canEdit} />
+        </Stat>
+        <Stat label="Disponible" sub="de lo asignado">
+          <AnimatedNumber value={available} format={formatCOPMillions} />
+        </Stat>
+      </div>
+
+      {hasQuote ? (
+        <ul className="mt-5 grid gap-2.5 text-[13px] text-white/70 sm:grid-cols-3">
+          <Insight label="Pendiente por aprobar" value={pending} hint={`${formatPct(quote ? pending / quote : 0)} de la cotización sin fondos asignados`} />
+          <Insight label="Falta por ejecutar" value={toExecute} hint={`${formatPct(quote ? spent / quote : 0)} de la cotización ya ejecutado`} />
+          <Insight label="Brecha por financiar" value={Math.max(0, toExecute - fundsLeft)} hint={toExecute ? `Lo disponible cubre el ${formatPct(Math.min(1, fundsLeft / toExecute))} de lo que falta ejecutar` : "Cotización ejecutada"} tone={toExecute > fundsLeft ? "warn" : "ok"} />
+        </ul>
+      ) : (
+        canEdit && <QuoteSetup />
+      )}
       {excluded > 0 && (
         <p className="mt-4 text-[12px] text-white/55">
           <span className="tabular font-semibold text-white/80">{formatCOP(excluded)}</span> en gastos registrados que no cuentan en el presupuesto (los paga un tercero).
         </p>
       )}
-      <div className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-[16px] bg-white/10">
-        <Stat label="Presupuesto">
-          {editing ? (
-            <form
-              className="flex items-center gap-1.5"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (draft > 0 && (await setBudget(draft))) setEditing(false);
-              }}
-            >
-              <input autoFocus inputMode="numeric" value={money(draft)} onChange={(e) => setDraft(digits(e.target.value))} onKeyDown={(e) => e.key === "Escape" && setEditing(false)} className="tabular h-8 w-full min-w-0 rounded-[8px] bg-white px-2 text-[14px] text-ink outline-none" aria-label="Nuevo presupuesto" />
-              <button type="submit" className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-[#2ea06e]" aria-label="Guardar presupuesto">
-                <Check size={15} />
-              </button>
-            </form>
-          ) : (
-            <span className="flex items-center gap-2">
-              <AnimatedNumber value={budget} format={formatCOPMillions} />
-              {canEdit && (
-                <button onClick={() => (setDraft(budget), setEditing(true))} className="grid h-6 w-6 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white" aria-label="Editar presupuesto">
-                  <Pencil size={12} />
-                </button>
-              )}
-            </span>
-          )}
-        </Stat>
-        <Stat label="Consumido">
-          <OpeningEditor spent={spent} expenses={expenses} canEdit={canEdit} />
-        </Stat>
-        <Stat label="Disponible">
-          <AnimatedNumber value={available} format={formatCOPMillions} />
-        </Stat>
-      </div>
     </section>
+  );
+}
+
+function Legend({ swatch, label, value }: { swatch: ReactNode; label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      {swatch}
+      <span>{label}</span>
+      <span className="tabular font-semibold text-white">{value}</span>
+    </span>
+  );
+}
+
+function Insight({ label, value, hint, tone }: { label: string; value: number; hint: string; tone?: "warn" | "ok" }) {
+  return (
+    <li className="rounded-[14px] bg-white/[0.06] px-3.5 py-3">
+      <p className="text-[11px] font-medium tracking-wide text-white/55 uppercase">{label}</p>
+      <p className={cn("tabular mt-1 text-[18px] font-semibold", tone === "warn" ? "text-[#ffd08a]" : "text-white")}>{formatCOPMillions(value)}</p>
+      <p className="mt-0.5 text-[11px] leading-snug text-white/50">{hint}</p>
+    </li>
+  );
+}
+
+/** Inline: botón para crear la cotización cuando el proyecto aún no la tiene. */
+function QuoteSetup() {
+  const setQuote = useProjectStore((s) => s.setQuote);
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState("Cotización etapa 1");
+  const [v, setV] = useState(0);
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="mt-5 inline-flex h-9 items-center gap-2 rounded-full bg-white/10 px-4 text-[13px] font-medium text-white transition hover:bg-white/20">
+        <Plus size={14} /> Agregar el valor cotizado
+      </button>
+    );
+  return (
+    <form
+      className="mt-5 flex flex-wrap items-center gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (v > 0 && (await setQuote(label.trim() || "Cotización", v))) setOpen(false);
+      }}
+    >
+      <input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} aria-label="Nombre de la cotización" className="h-9 w-[200px] rounded-[10px] bg-white px-3 text-[13px] text-ink outline-none" />
+      <input autoFocus inputMode="numeric" value={money(v)} onChange={(e) => setV(digits(e.target.value))} placeholder="Valor cotizado" aria-label="Valor cotizado" className="tabular h-9 w-[180px] rounded-[10px] bg-white px-3 text-[13px] text-ink outline-none" />
+      <button type="submit" className="h-9 rounded-full bg-[#2ea06e] px-4 text-[13px] font-semibold">
+        Guardar
+      </button>
+    </form>
+  );
+}
+
+function QuoteEditor({ quote, label, canEdit }: { quote: number; label: string; canEdit: boolean }) {
+  const setQuote = useProjectStore((s) => s.setQuote);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(label);
+  const [v, setV] = useState(quote);
+  if (editing)
+    return (
+      <form
+        className="space-y-1.5"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (await setQuote(name.trim() || "Cotización", v)) setEditing(false);
+        }}
+      >
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} aria-label="Nombre de la cotización" className="h-7 w-full min-w-0 rounded-[8px] bg-white px-2 text-[12px] text-ink outline-none" />
+        <div className="flex items-center gap-1.5">
+          <input autoFocus inputMode="numeric" value={money(v)} onChange={(e) => setV(digits(e.target.value))} onKeyDown={(e) => e.key === "Escape" && setEditing(false)} aria-label="Valor cotizado" className="tabular h-8 w-full min-w-0 rounded-[8px] bg-white px-2 text-[14px] text-ink outline-none" />
+          <button type="submit" className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-[#2ea06e]" aria-label="Guardar cotización">
+            <Check size={15} />
+          </button>
+        </div>
+      </form>
+    );
+  return (
+    <span className="flex items-center gap-2">
+      <AnimatedNumber value={quote} format={formatCOPMillions} />
+      {canEdit && (
+        <button onClick={() => (setName(label), setV(quote), setEditing(true))} className="grid h-6 w-6 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white" aria-label="Editar cotización">
+          <Pencil size={12} />
+        </button>
+      )}
+    </span>
+  );
+}
+
+function BudgetEditor({ budget, canEdit }: { budget: number; canEdit: boolean }) {
+  const setBudget = useProjectStore((s) => s.setBudget);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(budget);
+  if (editing)
+    return (
+      <form
+        className="flex items-center gap-1.5"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (draft > 0 && (await setBudget(draft))) setEditing(false);
+        }}
+      >
+        <input autoFocus inputMode="numeric" value={money(draft)} onChange={(e) => setDraft(digits(e.target.value))} onKeyDown={(e) => e.key === "Escape" && setEditing(false)} className="tabular h-8 w-full min-w-0 rounded-[8px] bg-white px-2 text-[14px] text-ink outline-none" aria-label="Valor asignado por los propietarios" />
+        <button type="submit" className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-[#2ea06e]" aria-label="Guardar valor asignado">
+          <Check size={15} />
+        </button>
+      </form>
+    );
+  return (
+    <span className="flex items-center gap-2">
+      <AnimatedNumber value={budget} format={formatCOPMillions} />
+      {canEdit && (
+        <button onClick={() => (setDraft(budget), setEditing(true))} className="grid h-6 w-6 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white" aria-label="Editar valor asignado">
+          <Pencil size={12} />
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -283,11 +406,12 @@ function OpeningEditor({ spent, expenses, canEdit }: { spent: number; expenses: 
   );
 }
 
-function Stat({ label, children }: { label: string; children: ReactNode }) {
+function Stat({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
   return (
-    <div className="min-w-0 bg-[#0f2a20] px-2.5 py-3 sm:px-4">
+    <div className="min-w-0 bg-[#0f2a20] px-3 py-3.5 sm:px-4">
       <p className="truncate text-[10px] font-medium tracking-wide text-white/55 uppercase sm:text-[11px]">{label}</p>
-      <div className="tabular mt-1 text-[14px] font-semibold whitespace-nowrap sm:text-[18px]">{children}</div>
+      <div className="tabular mt-1 text-[16px] font-semibold whitespace-nowrap sm:text-[19px]">{children}</div>
+      {sub && <p className="mt-1 truncate text-[11px] text-white/45">{sub}</p>}
     </div>
   );
 }
