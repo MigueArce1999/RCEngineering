@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Box, Camera, CheckCircle2, Clock, Inbox, Layers3, MessageSquare, Send, TrendingUp, X } from "lucide-react";
+import { Box, Camera, CheckCircle2, Clock, Inbox, Layers3, MapPin, MessageSquare, Send, TrendingUp, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useComments, type ClientComment, type CommentRef, type CommentStatus } from "@/stores/commentsStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -96,6 +96,9 @@ function Card({ c }: { c: ClientComment }) {
   const sendReply = useComments((s) => s.sendReply);
   const remove = useComments((s) => s.remove);
   const openBlueprints = useUI((s) => s.openBlueprints);
+  const focusModel = useUI((s) => s.focusModel);
+  const hasModel = useProjectStore((s) => !!s.projects.find((p) => p.id === s.projectId)?.modelPath);
+  const num = useComments((s) => [...s.items].filter((x) => x.pin).sort((a, b) => a.createdAt.localeCompare(b.createdAt)).findIndex((x) => x.id === c.id) + 1);
   const photoRef = c.refType;
   const hasPlano = useProjectStore((s) => (c.refId ? s.blueprints.some((b) => b.id === c.refId) : false));
   const [reply, setReply] = useState(c.reply);
@@ -116,6 +119,11 @@ function Card({ c }: { c: ClientComment }) {
               {REF_ICON[photoRef]} {REF_LABEL[photoRef]}
             </span>
             {c.refLabel && <span className="truncate">{c.refLabel}</span>}
+            {c.pin && hasModel && (
+              <button onClick={() => focusModel(c.pin!, num)} className="inline-flex items-center gap-1 rounded-full bg-[#1f5fd1] px-2.5 py-0.5 text-[12px] font-semibold text-white transition hover:brightness-110">
+                <MapPin size={12} /> Ver en el modelo
+              </button>
+            )}
             {hasPlano && (
               <button onClick={() => openBlueprints(c.refId)} className="font-medium text-brand underline">
                 Ver plano

@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useInView, useScroll, useTransform } from "framer-motion";
-import { ArrowDown, Box, CalendarDays, ChevronLeft, MessageSquarePlus, ChevronRight, Eye, FileText, Layers3, Loader2, MapPin, Maximize2, Minimize2, MoveHorizontal, Ruler, ShieldCheck, X } from "lucide-react";
+import { ArrowDown, Box, CalendarDays, ChevronLeft, MessageSquarePlus, ChevronRight, Eye, FileText, Layers3, Loader2, MapPin, Maximize2, MoveHorizontal, Ruler, ShieldCheck, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -15,6 +15,7 @@ import { STAGE_ICONS } from "@/components/dashboard/StagePanel";
 import { ProjectModelFrame } from "@/components/viewer/ProjectModelFrame";
 import { PlanStage } from "@/components/docs/PlanStage";
 import { GuestCommentsProvider, useGuestComment } from "./GuestComments";
+import { GuestViewer } from "./GuestViewer";
 import { Lightbox, type LightboxItem } from "@/components/docs/Lightbox";
 import { useSignedUrls } from "@/components/docs/useSignedUrls";
 
@@ -183,9 +184,10 @@ function Hero({ name, eyebrow, status, progress, stageName, model, loadModel, ph
   return (
     <section className="relative h-[100svh] min-h-[560px] overflow-hidden bg-[#0b1712]">
       {/* Fondo: modelo 3D del proyecto, o la foto más reciente de la obra */}
-      <div className={cn(explore ? "fixed inset-0 z-[60] bg-[#0b1712]" : "absolute inset-0")}>
+      <div className="absolute inset-0">
         {model ? (
-          <ProjectModelFrame path={model.path} settings={model.settings ?? {}} interactive={explore || active} compact={!explore} onActivate={() => setActive(true)} load={loadModel} dark />
+          // Mientras se explora en pantalla completa, el modelo de portada se quita (un solo 3D activo: cuida el celular)
+          !explore && <ProjectModelFrame path={model.path} settings={model.settings ?? {}} interactive={active} compact onActivate={() => setActive(true)} load={loadModel} dark />
         ) : photoUrl ? (
           <motion.div className="absolute inset-0" initial={{ scale: 1.12 }} animate={{ scale: 1 }} transition={{ duration: 14, ease: "linear" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -194,12 +196,8 @@ function Hero({ name, eyebrow, status, progress, stageName, model, loadModel, ph
         ) : (
           <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_70%_20%,#1f5a43_0%,#0b1712_60%)]" />
         )}
-        {explore && (
-          <motion.button initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} onClick={() => setExplore(false)} className="absolute top-4 right-4 z-10 inline-flex h-11 items-center gap-2 rounded-full bg-white/95 px-4 text-[14px] font-semibold text-ink shadow-[var(--shadow-lg)]">
-            <Minimize2 size={16} /> Salir del 3D
-          </motion.button>
-        )}
       </div>
+      <AnimatePresence>{explore && model && <GuestViewer path={model.path} settings={model.settings ?? {}} load={loadModel} onClose={() => setExplore(false)} />}</AnimatePresence>
 
       {!explore && (
         <>

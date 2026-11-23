@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadProjectModel } from "@/lib/api";
 import { cn } from "@/lib/format";
 import { getCachedModel, putCachedModel } from "@/lib/modelCache";
+import { GUEST_CSS, patchModel } from "@/lib/modelHook";
 
 /**
  * Muestra el modelo 3D propio del proyecto (HTML autocontenido subido a Storage).
@@ -20,6 +21,23 @@ const cache = new Map<string, string>();
  * Selectores del visor "Casa P-C" y nombres habituales de paneles; en vista 3D completa se muestran.
  */
 const COMPACT_CSS = `html.rc-compact .ui,html.rc-compact #info,html.rc-compact .compass,html.rc-compact #mini,html.rc-compact #walkHud,html.rc-compact .lbl,html.rc-compact .dimL,html.rc-compact .dimN,html.rc-compact .dimV,html.rc-compact .dimR,html.rc-compact .dimT,html.rc-compact [data-rc-panel]{display:none!important}`;
+export interface ModelPin {
+  id: string;
+  n: number | string;
+  p: [number, number, number];
+  status?: string;
+  active?: boolean;
+}
+export interface ModelPick {
+  p: [number, number, number];
+  cam: [number, number, number];
+  tgt: [number, number, number];
+  fov: number;
+  sx: number;
+  sy: number;
+}
+export type ModelCmd = { n: number; type: "view" | "fly" | "walk"; arg?: unknown };
+
 /** Precarga un modelo ya descargado (evita una segunda descarga). */
 export const primeProjectModel = (path: string, html: string) => void cache.set(path, html);
 
@@ -35,7 +53,7 @@ var raf=window.requestAnimationFrame.bind(window),paused=false,q=[],qid=0;
 window.requestAnimationFrame=function(cb){if(paused){q.push(cb);return -(++qid)}return raf(cb)};
 function pause(v){paused=v;if(!v){var l=q;q=[];l.forEach(function(cb){raf(cb)})}}
 addEventListener("message",function(e){if(!e.data)return;if(e.data.__rcView){document.documentElement.classList.toggle("rc-compact",e.data.__rcView==="compact");setTimeout(function(){dispatchEvent(new Event("resize"))},60)}if(typeof e.data.__rcPause==="boolean")pause(e.data.__rcPause)});
-})();</script><style>${COMPACT_CSS}</style>`;
+})();</script><style>${COMPACT_CSS}${GUEST_CSS}</style>`;
 }
 
 /** Verdadero mientras un diálogo de Radix bloquea la página (hay una pantalla abierta encima). */
@@ -61,6 +79,13 @@ export function ProjectModelFrame({
   load = downloadProjectModel,
   pauseWhenCovered = true,
   dark = false,
+  guest = false,
+  commentMode = false,
+  pins,
+  showLabels = false,
+  cmd = null,
+  onPick,
+  onPinClick,
 }: {
   path: string;
   settings: Record<string, string>;
@@ -74,6 +99,17 @@ export function ProjectModelFrame({
   /** Pausar el modelo mientras un diálogo cubre la página */
   pauseWhenCovered?: boolean;
   dark?: boolean;
+  /** Vista de invitado: modelo limpio, sin paneles de medidas, lluvia ni edición */
+  guest?: boolean;
+  /** Un toque sobre el modelo elige un punto para comentar */
+  commentMode?: boolean;
+  /** Alfileres de comentarios anclados al modelo (coordenadas del modelo) */
+  pins?: ModelPin[];
+  showLabels?: boolean;
+  /** Orden puntual al modelo (cambiar de vista, volar la cámara, recorrido); cambia `n` para enviarla */
+  cmd?: ModelCmd | null;
+  onPick?: (p: ModelPick) => void;
+  onPinClick?: (id: string) => void;
 }) {
   const [html, setHtml] = useState<string | null>(cache.get(path) ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -126,10 +162,23 @@ export function ProjectModelFrame({
     };
   }, [path, near, html]);
 
+  const onPickRef = useRef(onPick);
+  const onPinRef = useRef(onPinClick);
+  const pushState = useRef<() => void>(() => {});
+  const cmdRef = useRef<ModelCmd | null>(null);
   // Mensajes del puente de almacenamiento (solo del iframe propio)
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (!onSettings || e.source !== frame.current?.contentWindow || !e.data?.__rcModel) return;
+      if (e.source !== frame.current?.contentWindow || !e.data) return;
+      if (e.data.__rcPick) return onPickRef.current?.(e.data.__rcPick as ModelPick);
+      if (e.data.__rcPinClick) return onPinRef.current?.(String(e.data.__rcPinClick));
+      if (e.data.__rcReady) {
+        pushState.current();
+        const c = cmdRef.current;
+        if (c?.type === "fly") frame.current?.contentWindow?.postMessage({ __rcCmd: { type: c.type, arg: c.arg } }, "*");
+        return;
+      }
+      if (!onSettings || !e.data.__rcModel) return;
       const next = e.data.data as Record<string, unknown>;
       const clean = Object.fromEntries(Object.entries(next).filter(([, v]) => typeof v === "string")) as Record<string, string>;
       onSettings(clean);
@@ -137,6 +186,24 @@ export function ProjectModelFrame({
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [onSettings]);
+
+  // Estado deseado → modelo. Se reenvía cuando el modelo avisa que está listo y cada vez que cambia.
+  useEffect(() => {
+    onPickRef.current = onPick;
+    onPinRef.current = onPinClick;
+    pushState.current = () => {
+      const w = frame.current?.contentWindow;
+      w?.postMessage({ __rcG: { guest, labels: showLabels, comment: commentMode, pins: pins ?? [], keepPreview: commentMode } }, "*");
+    };
+    pushState.current();
+  });
+  const lastCmd = useRef(0);
+  useEffect(() => {
+    if (!cmd || cmd.n === lastCmd.current) return;
+    lastCmd.current = cmd.n;
+    cmdRef.current = cmd;
+    frame.current?.contentWindow?.postMessage({ __rcCmd: { type: cmd.type, arg: cmd.arg } }, "*");
+  }, [cmd]);
 
   // Cambia de modo sin recargar el modelo (se conserva la cámara)
   const compactRef = useRef(compact);
@@ -155,12 +222,14 @@ export function ProjectModelFrame({
     const w = frame.current?.contentWindow;
     w?.postMessage({ __rcView: compactRef.current ? "compact" : "full" }, "*");
     w?.postMessage({ __rcPause: coveredRef.current }, "*");
+    pushState.current();
   };
 
   const srcDoc = useMemo(() => {
     if (!html) return undefined;
     const inject = bridge(boot);
-    return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + inject) : inject + html;
+    const patched = patchModel(html);
+    return /<head[^>]*>/i.test(patched) ? patched.replace(/<head[^>]*>/i, (m) => m + inject) : inject + patched;
   }, [html, boot]);
 
   return (

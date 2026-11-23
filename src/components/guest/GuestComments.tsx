@@ -6,7 +6,7 @@ import { Check, CheckCircle2, Clock, MessageSquarePlus, Send, X } from "lucide-r
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cn, formatDate } from "@/lib/format";
-import { fetchGuestComments, sendGuestComment, type GuestComment, type GuestRef } from "@/lib/guest";
+import { fetchGuestComments, sendGuestComment, type GuestComment, type GuestPin, type GuestRef } from "@/lib/guest";
 
 const EXPO = [0.16, 1, 0.3, 1] as const;
 const KINDS: { type: GuestRef["type"]; label: string }[] = [
@@ -24,8 +24,16 @@ const STATUS = {
 } as const;
 const NAME_KEY = "rc-guest-name";
 
-type Ctx = { enabled: boolean; open: (ref?: GuestRef) => void };
-const GuestCommentCtx = createContext<Ctx>({ enabled: false, open: () => {} });
+type Ctx = {
+  enabled: boolean;
+  open: (ref?: GuestRef) => void;
+  items: GuestComment[];
+  /** Nombre recordado del cliente */
+  name: string;
+  /** Envía un comentario (con punto del modelo opcional) y actualiza la lista */
+  post: (input: { author: string; body: string; ref: GuestRef; pin?: GuestPin | null }) => Promise<void>;
+};
+const GuestCommentCtx = createContext<Ctx>({ enabled: false, open: () => {}, items: [], name: "", post: async () => {} });
 /** Abre el cuadro de comentarios (opcionalmente ligado a una foto, plano o al modelo). */
 export const useGuestComment = () => useContext(GuestCommentCtx);
 
@@ -71,9 +79,24 @@ export function GuestCommentsProvider({ client, token, children }: { client: Sup
     };
   }, [client, token]);
 
+  const post = useCallback(
+    async (input: { author: string; body: string; ref: GuestRef; pin?: GuestPin | null }) => {
+      await sendGuestComment(client, token, input);
+      try {
+        localStorage.setItem(NAME_KEY, input.author.trim());
+      } catch {}
+      setName(input.author.trim());
+      await refresh();
+    },
+    [client, token, refresh],
+  );
+
   const api = useMemo<Ctx>(
     () => ({
       enabled: allow,
+      items,
+      name,
+      post,
       open: (r) => {
         setRef(r ?? { type: "general" });
         setSent(false);
@@ -81,7 +104,7 @@ export function GuestCommentsProvider({ client, token, children }: { client: Sup
         setOpen(true);
       },
     }),
-    [allow],
+    [allow, items, name, post],
   );
 
   const submit = async () => {

@@ -24,6 +24,8 @@ export interface ClientComment {
   createdAt: string;
   seenAt: string | null;
   resolvedAt: string | null;
+  /** Punto del modelo 3D donde el cliente dejó el comentario, con la cámara de ese momento */
+  pin: { p: [number, number, number]; cam: [number, number, number]; tgt: [number, number, number]; fov: number } | null;
 }
 
 /** Comentarios de clientes del proyecto activo, con aviso al instante (Realtime) y respaldo por consulta periódica. */
@@ -55,6 +57,7 @@ const toComment = (r: any): ClientComment => ({
   createdAt: r.created_at,
   seenAt: r.seen_at,
   resolvedAt: r.resolved_at,
+  pin: r.pin ?? null,
 });
 
 const fail = (title: string, description?: string) => useUI.getState().toast({ title, description, tone: "warning" });

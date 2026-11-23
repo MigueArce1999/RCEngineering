@@ -38,6 +38,10 @@ interface UIState {
   materialDetailId: string | null;
   setMaterialDetailId: (id: string | null) => void;
 
+  /** Llevar el visor 3D al punto de un comentario de cliente */
+  modelFocus: { nonce: number; n: number; pin: { p: [number, number, number]; cam: [number, number, number]; tgt: [number, number, number]; fov: number } } | null;
+  focusModel: (pin: NonNullable<UIState["modelFocus"]>["pin"], n: number) => void;
+  clearModelFocus: () => void;
   blueprintId: string | null;
   blueprintOpen: boolean;
   /** Pestaña del módulo "Planos y obra" */
@@ -104,6 +108,9 @@ export const useUI = create<UIState>()((set) => ({
 
   blueprintId: null,
   blueprintOpen: false,
+  modelFocus: null,
+  focusModel: (pin, n) => set((s) => ({ modelFocus: { nonce: (s.modelFocus?.nonce ?? 0) + 1, n, pin }, blueprintOpen: false, module: "home", immersive: true })),
+  clearModelFocus: () => set({ modelFocus: null }),
   docsTab: "blueprints",
   setDocsTab: (docsTab) => set({ docsTab }),
   openBlueprints: (id = null) => set((s) => ({ blueprintOpen: true, docsTab: "blueprints", blueprintId: id ?? s.blueprintId })),

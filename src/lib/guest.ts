@@ -100,6 +100,14 @@ export interface GuestComment {
   status: "new" | "in_progress" | "done" | "dismissed";
   reply: string;
   createdAt: string;
+  /** Punto del modelo 3D al que se ancló el comentario, con la cámara de ese momento */
+  pin?: GuestPin | null;
+}
+export interface GuestPin {
+  p: [number, number, number];
+  cam: [number, number, number];
+  tgt: [number, number, number];
+  fov: number;
 }
 
 export async function fetchGuestComments(client: SupabaseClient, token: string) {
@@ -108,7 +116,7 @@ export async function fetchGuestComments(client: SupabaseClient, token: string) 
   return (data as { allow: boolean; items: GuestComment[] } | null) ?? { allow: false, items: [] };
 }
 
-export async function sendGuestComment(client: SupabaseClient, token: string, input: { author: string; body: string; ref: GuestRef }) {
-  const { error } = await client.rpc("guest_add_comment", { p_token: token, p_author: input.author, p_body: input.body, p_ref_type: input.ref.type, p_ref_id: input.ref.id ?? null, p_ref_label: input.ref.label ?? "" });
+export async function sendGuestComment(client: SupabaseClient, token: string, input: { author: string; body: string; ref: GuestRef; pin?: GuestPin | null }) {
+  const { error } = await client.rpc("guest_add_comment", { p_token: token, p_author: input.author, p_body: input.body, p_ref_type: input.ref.type, p_ref_id: input.ref.id ?? null, p_ref_label: input.ref.label ?? "", p_pin: input.pin ?? null });
   if (error) throw new Error(error.message);
 }

@@ -22,7 +22,7 @@ import {
   Upload,
   ZoomIn,
 } from "lucide-react";
-import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/format";
 import { useUI, type CameraPreset, type PointerTool, type ViewMode } from "@/stores/uiStore";
 import { GlassButton, Skeleton } from "@/components/ui/primitives";
@@ -101,6 +101,14 @@ export function ArchitecturalViewer() {
   const active = useUI((s) => s.viewerActive);
   const setActive = useUI((s) => s.setViewerActive);
   const interactive = immersive || active;
+  // Llevar el visor al punto de un comentario de cliente (desde la bandeja de comentarios)
+  const modelFocus = useUI((s) => s.modelFocus);
+  const clearModelFocus = useUI((s) => s.clearModelFocus);
+  const focusPins = useMemo(() => (modelFocus ? [{ id: "focus", n: modelFocus.n || "●", p: modelFocus.pin.p, status: "new", active: true }] : []), [modelFocus]);
+  const focusCmd = useMemo(() => (modelFocus ? { n: modelFocus.nonce, type: "fly" as const, arg: { cam: modelFocus.pin.cam, tgt: modelFocus.pin.tgt, fov: modelFocus.pin.fov } } : null), [modelFocus]);
+  useEffect(() => {
+    if (!immersive && modelFocus) clearModelFocus();
+  }, [immersive, modelFocus, clearModelFocus]);
   const modelPath = remote ? project?.modelPath ?? null : null;
   const [wheelHint, setWheelHint] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -188,7 +196,7 @@ export function ArchitecturalViewer() {
           e.target.value = "";
         }} />
         {modelPath ? (
-          <ProjectModelFrame key={modelPath} path={modelPath} settings={project?.modelSettings ?? {}} interactive={interactive} compact={!immersive} onActivate={() => setActive(true)} onSettings={onModelSettings} />
+          <ProjectModelFrame key={modelPath} pins={focusPins} cmd={focusCmd} path={modelPath} settings={project?.modelSettings ?? {}} interactive={interactive} compact={!immersive} onActivate={() => setActive(true)} onSettings={onModelSettings} />
         ) : (
         <>
         <div className="absolute inset-0">
