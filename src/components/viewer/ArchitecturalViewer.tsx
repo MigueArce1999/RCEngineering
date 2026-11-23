@@ -188,7 +188,7 @@ export function ArchitecturalViewer() {
           e.target.value = "";
         }} />
         {modelPath ? (
-          <ProjectModelFrame path={modelPath} settings={project?.modelSettings ?? {}} interactive={interactive} compact={!immersive} onActivate={() => setActive(true)} onSettings={onModelSettings} />
+          <ProjectModelFrame key={modelPath} path={modelPath} settings={project?.modelSettings ?? {}} interactive={interactive} compact={!immersive} onActivate={() => setActive(true)} onSettings={onModelSettings} />
         ) : (
         <>
         <div className="absolute inset-0">

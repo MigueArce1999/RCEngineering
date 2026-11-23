@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { motion } from "framer-motion";
-import { Camera, Layers3, UsersRound, X } from "lucide-react";
+import { Camera, Layers3, MessageSquare, UsersRound, X } from "lucide-react";
 import { useEffect } from "react";
 import { useUI, type DocsTab } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -14,6 +14,8 @@ import { Deferred } from "@/components/ui/overlays";
 import { BlueprintsTab } from "./BlueprintsTab";
 import { PhotosTab } from "./PhotosTab";
 import { SharesTab } from "./SharesTab";
+import { CommentsTab } from "./CommentsTab";
+import { useNewComments } from "@/stores/commentsStore";
 
 /** Módulo "Planos y obra": planos del proyecto, registro fotográfico y enlaces de invitado. */
 export function DocsWorkspace() {
@@ -27,11 +29,12 @@ export function DocsWorkspace() {
   const photoCount = useDocs((s) => s.photos.length);
   const canShare = useCan("projects.manage");
   const clearJobs = useDocs((s) => s.clearFinishedJobs);
+  const newComments = useNewComments();
 
-  const tabs: { key: DocsTab; label: string; short?: string; icon: typeof Layers3; count?: number }[] = [
+  const tabs: { key: DocsTab; label: string; short?: string; icon: typeof Layers3; count?: number; alert?: boolean }[] = [
     { key: "blueprints", label: "Planos", icon: Layers3, count: bpCount },
     ...(isRemote ? [{ key: "photos" as const, label: "Fotos de obra", short: "Fotos", icon: Camera, count: photoCount || undefined }] : []),
-    ...(isRemote && canShare ? [{ key: "guests" as const, label: "Invitados", icon: UsersRound }] : []),
+    ...(isRemote && canShare ? [{ key: "comments" as const, label: "Comentarios", icon: MessageSquare, count: newComments || undefined, alert: true }, { key: "guests" as const, label: "Invitados", icon: UsersRound }] : []),
   ];
   // Las fotos se piden al abrir (para el contador y para que la pestaña abra al instante)
   const loadPhotos = useDocs((s) => s.loadPhotos);
@@ -62,9 +65,9 @@ export function DocsWorkspace() {
               <Dialog.Title className="text-[20px] font-semibold tracking-[-0.02em] text-ink">Planos y obra</Dialog.Title>
               <Dialog.Description className="text-[13px] text-ink-2">{project?.name ?? "Proyecto"} · planos, registro fotográfico e invitados</Dialog.Description>
             </div>
-            <div className="order-last flex w-full gap-1 rounded-full bg-surface-2 p-1 sm:order-none sm:w-auto" role="tablist" aria-label="Sección">
+            <div className="scroll-thin order-last flex w-full max-w-full gap-1 overflow-x-auto rounded-full bg-surface-2 p-1 sm:order-none sm:w-auto" role="tablist" aria-label="Sección">
               {tabs.map((t) => (
-                <button key={t.key} role="tab" aria-selected={active === t.key} onClick={() => setTab(t.key)} className={cn("relative flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition-colors sm:flex-none", active === t.key ? "text-ink" : "text-ink-2 hover:text-ink")}>
+                <button key={t.key} role="tab" aria-selected={active === t.key} onClick={() => setTab(t.key)} className={cn("relative flex h-9 flex-1 shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition-colors sm:flex-none", active === t.key ? "text-ink" : "text-ink-2 hover:text-ink")}>
                   {active === t.key && <motion.span layoutId="docs-tab" className="absolute inset-0 rounded-full bg-white shadow-[var(--shadow-sm)]" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
                   <t.icon size={15} className="relative hidden shrink-0 sm:block" />
                   <span className="relative whitespace-nowrap">
@@ -77,7 +80,7 @@ export function DocsWorkspace() {
                       t.label
                     )}
                   </span>
-                  {t.count ? <span className="tabular relative rounded-full bg-surface-2 px-1.5 text-[11px] text-ink-2">{t.count}</span> : null}
+                  {t.count ? <span className={cn("tabular relative rounded-full px-1.5 text-[11px]", t.alert ? "bg-[#e5484d] font-semibold text-white" : "bg-surface-2 text-ink-2")}>{t.count}</span> : null}
                 </button>
               ))}
             </div>
@@ -90,6 +93,7 @@ export function DocsWorkspace() {
               {active === "blueprints" && <BlueprintsTab initialId={requested} />}
               {active === "photos" && <PhotosTab />}
               {active === "guests" && <SharesTab />}
+              {active === "comments" && <CommentsTab />}
             </Deferred>
           )}
         </Dialog.Content>

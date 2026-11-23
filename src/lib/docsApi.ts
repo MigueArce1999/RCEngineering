@@ -199,6 +199,7 @@ const toShare = (r: Row): ProjectShare => ({
   showModel: r.show_model,
   showPhotos: r.show_photos,
   showBlueprints: r.show_blueprints,
+  allowComments: r.allow_comments !== false,
   expiresAt: r.expires_at,
   revokedAt: r.revoked_at,
   viewCount: r.view_count,
@@ -211,7 +212,7 @@ export async function listShares(projectId: string) {
   return (rows as Row[]).map(toShare);
 }
 
-export type ShareInput = Pick<ProjectShare, "label" | "showProgress" | "showModel" | "showPhotos" | "showBlueprints" | "expiresAt">;
+export type ShareInput = Pick<ProjectShare, "label" | "showProgress" | "showModel" | "showPhotos" | "showBlueprints" | "allowComments" | "expiresAt">;
 const shareRow = (s: Partial<ShareInput>) => {
   const r: Row = {};
   if (s.label !== undefined) r.label = s.label;
@@ -219,6 +220,7 @@ const shareRow = (s: Partial<ShareInput>) => {
   if (s.showModel !== undefined) r.show_model = s.showModel;
   if (s.showPhotos !== undefined) r.show_photos = s.showPhotos;
   if (s.showBlueprints !== undefined) r.show_blueprints = s.showBlueprints;
+  if (s.allowComments !== undefined) r.allow_comments = s.allowComments;
   if (s.expiresAt !== undefined) r.expires_at = s.expiresAt;
   return r;
 };

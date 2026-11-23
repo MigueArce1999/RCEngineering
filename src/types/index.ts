@@ -235,6 +235,7 @@ export interface ProjectShare {
   showModel: boolean;
   showPhotos: boolean;
   showBlueprints: boolean;
+  allowComments: boolean;
   expiresAt: string | null;
   revokedAt: string | null;
   viewCount: number;

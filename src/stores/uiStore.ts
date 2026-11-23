@@ -4,7 +4,7 @@ import { create } from "zustand";
 
 export type ModuleKey = "home" | "projects" | "blueprints" | "viewer3d" | "quotes" | "materials" | "inventory" | "finance" | "payroll" | "users";
 
-export type DocsTab = "blueprints" | "photos" | "guests";
+export type DocsTab = "blueprints" | "photos" | "guests" | "comments";
 
 export type ViewMode = "architectural" | "structural" | "roof" | "levels" | "progress" | "exploded" | "electrical" | "plumbing";
 export type CameraPreset = "iso" | "front" | "back" | "side" | "top";

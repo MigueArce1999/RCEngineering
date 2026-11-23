@@ -2,7 +2,7 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import { AnimatePresence, motion } from "framer-motion";
-import { Box, Camera, Check, Copy, Download, ExternalLink, Eye, Layers3, Link2, QrCode, ShieldCheck, TrendingUp, UserRoundPlus } from "lucide-react";
+import { Box, Camera, Check, Copy, Download, ExternalLink, Eye, Layers3, Link2, MessageSquare, QrCode, ShieldCheck, TrendingUp, UserRoundPlus } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ProjectShare } from "@/types";
 import { useDocs } from "@/stores/docsStore";
@@ -37,7 +37,7 @@ export function SharesTab() {
   const load = useDocs((s) => s.loadShares);
   const create = useDocs((s) => s.createShare);
   const projectName = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId)?.name ?? "el proyecto");
-  const [form, setForm] = useState<ShareInput & { days: number }>({ label: "", showProgress: true, showModel: true, showPhotos: true, showBlueprints: true, expiresAt: null, days: 0 });
+  const [form, setForm] = useState<ShareInput & { days: number }>({ label: "", showProgress: true, showModel: true, showPhotos: true, showBlueprints: true, allowComments: true, expiresAt: null, days: 0 });
   const [busy, setBusy] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
 
@@ -81,6 +81,11 @@ export function SharesTab() {
               </button>
             ))}
           </div>
+          <button onClick={() => setForm((f) => ({ ...f, allowComments: !f.allowComments }))} aria-pressed={form.allowComments} className={cn("mt-2 flex h-11 w-full items-center gap-2 rounded-[12px] px-3 text-left text-[13px] font-medium transition", form.allowComments ? "bg-white text-[#0f2a20]" : "bg-white/8 text-white/60 ring-1 ring-white/12 hover:text-white")}>
+            <MessageSquare size={15} />
+            <span className="flex-1">Puede dejar comentarios y pedir cambios</span>
+            <span className={cn("grid h-4 w-4 place-items-center rounded-full", form.allowComments ? "bg-accent text-white" : "ring-1 ring-white/30")}>{form.allowComments && <Check size={10} strokeWidth={3} />}</span>
+          </button>
           <p className="mt-4 mb-2 text-[12px] font-medium text-white/70">Vigencia</p>
           <div className="flex rounded-full bg-white/10 p-1">
             {EXPIRY.map((e) => (
@@ -190,6 +195,9 @@ function ShareCard({ share, highlight }: { share: ProjectShare; highlight: boole
             {s.icon} {s.label}
           </button>
         ))}
+        <button disabled={status !== "active"} onClick={() => save(share.id, { allowComments: !share.allowComments })} aria-pressed={share.allowComments} className={cn("inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium transition disabled:cursor-default", share.allowComments ? "bg-accent-soft text-brand" : "bg-surface-2 text-ink-3 line-through decoration-ink-3/40")}>
+          <MessageSquare size={15} /> Comentarios
+        </button>
         <span className="ml-auto flex items-center gap-1">
           {status === "active" && (
             <GlassButton variant="ghost" size="sm" onClick={() => void revoke(share.id)}>

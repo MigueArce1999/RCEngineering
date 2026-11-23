@@ -89,3 +89,26 @@ export function guestProgress(stages: GuestStage[]) {
   return stages.reduce((acc, st) => acc + (Number(st.weight) / wsum) * (st.total ? st.done / st.total : 0), 0);
 }
 export const stageState = (s: GuestStage) => (s.total > 0 && s.done === s.total ? "completed" : s.done > 0 || s.inProgress > 0 ? "in_progress" : "pending");
+
+export type GuestRef = { type: "general" | "modelo" | "foto" | "plano" | "avance"; id?: string | null; label?: string };
+export interface GuestComment {
+  id: string;
+  author: string;
+  body: string;
+  refType: GuestRef["type"];
+  refLabel: string;
+  status: "new" | "in_progress" | "done" | "dismissed";
+  reply: string;
+  createdAt: string;
+}
+
+export async function fetchGuestComments(client: SupabaseClient, token: string) {
+  const { data, error } = await client.rpc("guest_comments", { p_token: token });
+  if (error) throw new Error(error.message);
+  return (data as { allow: boolean; items: GuestComment[] } | null) ?? { allow: false, items: [] };
+}
+
+export async function sendGuestComment(client: SupabaseClient, token: string, input: { author: string; body: string; ref: GuestRef }) {
+  const { error } = await client.rpc("guest_add_comment", { p_token: token, p_author: input.author, p_body: input.body, p_ref_type: input.ref.type, p_ref_id: input.ref.id ?? null, p_ref_label: input.ref.label ?? "" });
+  if (error) throw new Error(error.message);
+}

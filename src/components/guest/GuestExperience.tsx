@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion, useInView, useScroll, useTransform } from "framer-motion";
-import { ArrowDown, Box, CalendarDays, ChevronLeft, ChevronRight, Eye, FileText, Layers3, Loader2, MapPin, Maximize2, Minimize2, MoveHorizontal, Ruler, ShieldCheck, X } from "lucide-react";
+import { ArrowDown, Box, CalendarDays, ChevronLeft, MessageSquarePlus, ChevronRight, Eye, FileText, Layers3, Loader2, MapPin, Maximize2, Minimize2, MoveHorizontal, Ruler, ShieldCheck, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -14,6 +14,7 @@ import { downloadGuestModel, fetchGuestView, guestClient, guestProgress, stageSt
 import { STAGE_ICONS } from "@/components/dashboard/StagePanel";
 import { ProjectModelFrame } from "@/components/viewer/ProjectModelFrame";
 import { PlanStage } from "@/components/docs/PlanStage";
+import { GuestCommentsProvider, useGuestComment } from "./GuestComments";
 import { Lightbox, type LightboxItem } from "@/components/docs/Lightbox";
 import { useSignedUrls } from "@/components/docs/useSignedUrls";
 
@@ -43,7 +44,11 @@ export function GuestExperience() {
   if (load.state === "loading") return <GuestSplash />;
   if (load.state === "invalid") return <GuestMessage title="Este enlace no está disponible" text="Puede haber vencido o haber sido desactivado. Pide un enlace nuevo a quien te lo compartió." />;
   if (load.state === "error") return <GuestMessage title="No pudimos cargar el proyecto" text="Revisa tu conexión a internet e inténtalo de nuevo." action={<button onClick={() => location.reload()} className="mt-6 h-11 rounded-full bg-brand px-6 text-[14px] font-semibold text-white">Reintentar</button>} />;
-  return <GuestPage view={load.view} client={load.client} />;
+  return (
+    <GuestCommentsProvider client={load.client} token={load.token}>
+      <GuestPage view={load.view} client={load.client} />
+    </GuestCommentsProvider>
+  );
 }
 
 function GuestSplash() {
@@ -403,6 +408,7 @@ function BigRing({ value }: { value: number }) {
 
 // ── Fotos de obra ───────────────────────────────────────────────────────
 function Photos({ client, photos, thumbs, stages, model, loadModel }: { client: SupabaseClient; photos: NonNullable<GuestView["photos"]>; thumbs: Record<string, string>; stages: GuestStage[]; model?: GuestView["model"]; loadModel: (p: string) => Promise<string> }) {
+  const comments = useGuestComment();
   const [open, setOpen] = useState<number | null>(null);
   const stageName = useMemo(() => Object.fromEntries(stages.map((s) => [s.id, s.name])), [stages]);
   const fullPaths = open === null ? [] : [-1, 0, 1].map((d) => photos[(open + d + photos.length) % photos.length]?.path);
@@ -477,6 +483,15 @@ function Photos({ client, photos, thumbs, stages, model, loadModel }: { client: 
         index={open}
         onIndex={setOpen}
         onClose={() => setOpen(null)}
+        details={comments.enabled ? (it) => (
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-2 text-center">
+            {it.caption && <p className="text-[15px] font-medium">{it.caption}</p>}
+            <p className="text-[12px] text-white/60">{formatDate(it.takenAt)}{it.stage ? ` · ${it.stage}` : ""}</p>
+            <button onClick={() => comments.open({ type: "foto", id: it.id, label: `Foto del ${formatDate(it.takenAt)}${it.caption ? ` · ${it.caption}` : ""}` })} className="mt-1 inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-semibold text-[#0b1712] transition hover:scale-[1.03]">
+              <MessageSquarePlus size={15} /> Comentar esta foto
+            </button>
+          </div>
+        ) : undefined}
         side={model ? <ProjectModelFrame path={model.path} settings={model.settings ?? {}} interactive compact={false} onActivate={() => {}} load={loadModel} pauseWhenCovered={false} dark /> : undefined}
       />
     </section>
@@ -525,6 +540,7 @@ function BeforeAfter({ before, after, beforeLabel, afterLabel }: { before: strin
 // ── Planos ──────────────────────────────────────────────────────────────
 function Blueprints({ client, blueprints }: { client: SupabaseClient; blueprints: GuestBlueprint[] }) {
   const [cat, setCat] = useState<string>("all");
+  const comments = useGuestComment();
   const [open, setOpen] = useState<GuestBlueprint | null>(null);
   const thumbs = useSignedUrls(client, BLUEPRINT_BUCKET, blueprints.map((b) => b.thumb));
   const files = useSignedUrls(client, BLUEPRINT_BUCKET, [open?.path]);
@@ -591,6 +607,12 @@ function Blueprints({ client, blueprints }: { client: SupabaseClient; blueprints
                 </Dialog.Title>
                 <p className="text-[12px] text-white/55">{open && `${CATEGORY_LABEL[open.category]} · ${open.level} · ${open.revision}`}</p>
               </div>
+              {comments.enabled && open && (
+                <button onClick={() => comments.open({ type: "plano", id: open.id, label: `${open.code} · ${open.title}` })} className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-semibold text-[#0b1712] transition hover:scale-[1.03]">
+                  <MessageSquarePlus size={15} /> <span className="hidden sm:inline">Comentar este plano</span>
+                  <span className="sm:hidden">Comentar</span>
+                </button>
+              )}
               <Dialog.Close className="grid h-10 w-10 place-items-center rounded-full bg-white/10 transition hover:bg-white/20" aria-label="Cerrar">
                 <X size={19} />
               </Dialog.Close>

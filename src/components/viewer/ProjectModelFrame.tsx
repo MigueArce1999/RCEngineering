@@ -4,6 +4,7 @@ import { Loader2, MousePointerClick } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadProjectModel } from "@/lib/api";
 import { cn } from "@/lib/format";
+import { getCachedModel, putCachedModel } from "@/lib/modelCache";
 
 /**
  * Muestra el modelo 3D propio del proyecto (HTML autocontenido subido a Storage).
@@ -25,7 +26,7 @@ export const primeProjectModel = (path: string, html: string) => void cache.set(
 function bridge(settings: Record<string, string>) {
   // Se serializa como JSON y se protege el cierre de etiqueta para no romper el HTML
   const data = JSON.stringify(settings).replace(/</g, "\\u003c");
-  return `<script>(function(){var d=${data};function send(){try{parent.postMessage({__rcModel:1,data:d},"*")}catch(e){}}
+  return `<script>(function(){var r0=window.devicePixelRatio||1,cap=Math.min(innerWidth,innerHeight)<700?1.25:2;if(r0>cap)try{Object.defineProperty(window,"devicePixelRatio",{get:function(){return cap}})}catch(e){}})();(function(){var d=${data};function send(){try{parent.postMessage({__rcModel:1,data:d},"*")}catch(e){}}
 var s={getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v);send()},removeItem:function(k){delete d[k];send()},clear:function(){d={};send()},key:function(i){return Object.keys(d)[i]||null}};
 Object.defineProperty(s,"length",{get:function(){return Object.keys(d).length}});
 try{Object.defineProperty(window,"localStorage",{configurable:true,get:function(){return s}})}catch(e){}
@@ -77,20 +78,53 @@ export function ProjectModelFrame({
   const [html, setHtml] = useState<string | null>(cache.get(path) ?? null);
   const [error, setError] = useState<string | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  // Los ajustes que el modelo guarda al usarse NO deben recargarlo: se toman una sola vez al montar
+  // (la pantalla que lo usa lo remonta con key={path} si cambia el archivo).
+  const [boot] = useState(settings);
+
+  // Visibilidad: no se descarga ni se dibuja mientras el visor está fuera de la pantalla (clave en el celular)
+  const [near, setNear] = useState(false);
+  const [onScreen, setOnScreen] = useState(true);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof IntersectionObserver === "undefined") return void setNear(true);
+    const io = new IntersectionObserver(
+      ([e]) => {
+        setOnScreen(e.isIntersecting);
+        if (e.isIntersecting) setNear(true);
+      },
+      { rootMargin: "300px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // La función de descarga se guarda aparte para que un cambio de identidad no reinicie la descarga
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  });
 
   useEffect(() => {
-    if (cache.has(path)) return;
+    if (!near || html) return;
     let alive = true;
-    load(path)
-      .then((text) => {
-        cache.set(path, text);
-        if (alive) setHtml(text);
-      })
-      .catch((e: Error) => alive && setError(e.message));
+    const done = (text: string) => {
+      cache.set(path, text);
+      if (alive) setHtml(text);
+    };
+    (async () => {
+      const stored = await getCachedModel(path); // 2.ª visita: sin descarga
+      if (!alive) return;
+      if (stored) return done(stored);
+      const text = await loadRef.current(path);
+      void putCachedModel(path, text);
+      done(text);
+    })().catch((e: Error) => alive && setError(e.message));
     return () => {
       alive = false;
     };
-  }, [path, load]);
+  }, [path, near, html]);
 
   // Mensajes del puente de almacenamiento (solo del iframe propio)
   useEffect(() => {
@@ -111,7 +145,7 @@ export function ProjectModelFrame({
     frame.current?.contentWindow?.postMessage({ __rcView: compact ? "compact" : "full" }, "*");
   }, [compact]);
   // Con una pantalla abierta encima, el modelo se pausa (queda su última imagen) y libera la GPU
-  const covered = useOverlayOpen() && pauseWhenCovered;
+  const covered = (useOverlayOpen() && pauseWhenCovered) || !onScreen;
   const coveredRef = useRef(covered);
   useEffect(() => {
     coveredRef.current = covered;
@@ -125,12 +159,12 @@ export function ProjectModelFrame({
 
   const srcDoc = useMemo(() => {
     if (!html) return undefined;
-    const inject = bridge(settings);
+    const inject = bridge(boot);
     return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + inject) : inject + html;
-  }, [html, settings]);
+  }, [html, boot]);
 
   return (
-    <div className="absolute inset-0">
+    <div ref={box} className="absolute inset-0">
       {srcDoc && (
         <iframe
           ref={frame}

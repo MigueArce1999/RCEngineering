@@ -29,6 +29,7 @@ import { useMemo, useState } from "react";
 import { cn, relativeDue } from "@/lib/format";
 import { useUI, type ModuleKey } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { useComments } from "@/stores/commentsStore";
 import { inventoryItems } from "@/lib/domain";
 import { useCatalog } from "@/hooks/useCatalog";
 import { useAuth, useCan } from "@/stores/authStore";
@@ -215,6 +216,9 @@ function Notifications() {
   const setMaterialDetailId = useUI((s) => s.setMaterialDetailId);
   const openModule = useUI((s) => s.openModule);
 
+  const comments = useComments((c) => c.items);
+  const openDocs = useUI((u) => u.openDocs);
+  const newOnes = useMemo(() => comments.filter((c) => c.status === "new"), [comments]);
   const items = useMemo(() => {
     const low = inventoryItems(materials).filter((i) => i.low);
     const due = tasks
@@ -223,18 +227,19 @@ function Notifications() {
       .slice(0, 3);
     const pending = quotes.filter((q) => q.status === "pending");
     return [
+      ...newOnes.map((c) => ({ id: `cm-${c.id}`, title: `Comentario de ${c.author}`, meta: c.body.length > 70 ? `${c.body.slice(0, 70)}…` : c.body, onClick: () => openDocs("comments"), alert: true })),
       ...due.map((t) => ({ id: t.id, title: t.title, meta: `Actividad · ${relativeDue(t.dueDate)}`, onClick: () => openStage(t.stageId, t.id) })),
       ...low.map((i) => ({ id: i.materialId, title: `Stock bajo: ${i.name}`, meta: "Alerta de abastecimiento", onClick: () => setMaterialDetailId(i.materialId) })),
       ...pending.map((q) => ({ id: q.id, title: `${q.code} pendiente de aprobación`, meta: q.title, onClick: () => openModule("quotes") })),
     ];
-  }, [tasks, quotes, materials, openStage, setMaterialDetailId, openModule]);
+  }, [tasks, quotes, materials, newOnes, openDocs, openStage, setMaterialDetailId, openModule]);
 
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
         <button className="glass relative grid h-10 w-10 place-items-center rounded-full text-ink transition hover:bg-white" aria-label={`Notificaciones (${items.length})`}>
           <Bell size={18} strokeWidth={1.8} />
-          {items.length > 0 && <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-accent ring-2 ring-white" />}
+          {newOnes.length > 0 ? <span className="tabular absolute -top-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e5484d] px-1 text-[10px] font-bold text-white ring-2 ring-white">{newOnes.length}</span> : items.length > 0 && <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-accent ring-2 ring-white" />}
         </button>
       </Popover.Trigger>
       <Popover.Portal>

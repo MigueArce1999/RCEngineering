@@ -9,7 +9,8 @@ import { HeaderActions, WelcomeHeading } from "@/components/layout/DashboardHead
 import { ArchitecturalViewer } from "@/components/viewer/ArchitecturalViewer";
 import { Toaster, TooltipProvider } from "@/components/ui/overlays";
 import { useProjectStore } from "@/stores/projectStore";
-import { useAuth } from "@/stores/authStore";
+import { useAuth, useCan } from "@/stores/authStore";
+import { useComments } from "@/stores/commentsStore";
 import { asset } from "@/lib/asset";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { SetupWizard } from "@/components/setup/SetupWizard";
@@ -86,9 +87,16 @@ function Dashboard() {
   const loadState = useProjectStore((s) => s.loadState);
   const hasProjects = useProjectStore((s) => s.projects.length > 0);
   const loaded = !remote || loadState === "ready" || loadState === "error";
+  const canManage = useCan("projects.manage");
   useEffect(() => {
-    if (loaded) preloadScreens();
-  }, [loaded]);
+    if (!loaded) return;
+    preloadScreens();
+    // Los administradores reciben los comentarios de clientes al instante
+    if (remote && canManage) {
+      useComments.getState().start();
+      return () => useComments.getState().stop();
+    }
+  }, [loaded, remote, canManage]);
   if (!loaded) return <Splash />;
   const empty = remote && !hasProjects;
 
