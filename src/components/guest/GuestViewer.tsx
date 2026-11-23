@@ -56,7 +56,6 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
 
   const goView = (k: string) => {
     setView(k);
-    setWalking(false);
     setPick(null);
     send("view", k);
   };
@@ -104,6 +103,7 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
           setActive(null);
           setPick(p);
         }}
+        onWalk={setWalking}
         onPinClick={(id) => {
           setPick(null);
           setActive((a) => (a === id ? null : id));
@@ -115,7 +115,7 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
         <button onClick={onClose} className="pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full bg-white/95 px-4 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]">
           <X size={16} /> Cerrar
         </button>
-        <button onClick={() => setLabels((v) => !v)} aria-pressed={labels} className={cn("pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full px-4 text-[13px] font-medium shadow-[var(--shadow-md)] transition active:scale-[0.97]", labels ? "bg-ink text-white" : "bg-white/95 text-ink")}>
+        <button onClick={() => setLabels((v) => !v)} aria-pressed={labels} className={cn("pointer-events-auto inline-flex h-11 items-center gap-2 rounded-full px-4 text-[13px] font-medium shadow-[var(--shadow-md)] transition active:scale-[0.97]", labels ? "bg-ink text-white" : "bg-white/95 text-ink", walking && "invisible")}>
           <Tag size={15} /> Nombres
         </button>
       </div>
@@ -129,9 +129,9 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
         )}
       </AnimatePresence>
 
-      {/* Barra inferior: vistas + recorrido + comentar */}
-      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
-        {!walking && (
+      {/* Barra inferior: vistas + recorrido + comentar. Durante el recorrido la oculta: el recorrido trae su propia tarjeta */}
+      {!walking && (
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
           <div className="scroll-thin pointer-events-auto flex max-w-full gap-1.5 overflow-x-auto rounded-full bg-[#0f2a20]/92 p-1.5 shadow-[0_10px_30px_rgb(0_0_0/0.35)] backdrop-blur-md" role="tablist" aria-label="Vistas">
             {VIEWS.map((v) => (
               <button key={v.k} role="tab" aria-selected={view === v.k} onClick={() => goView(v.k)} className={cn("h-10 shrink-0 rounded-full px-3.5 text-[13px] font-medium transition active:scale-[0.96]", view === v.k ? "bg-white text-[#0f2a20]" : "text-white/75 hover:text-white")}>
@@ -139,39 +139,34 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
               </button>
             ))}
           </div>
-        )}
-        <div className="pointer-events-auto flex gap-2">
-          <button
-            onClick={() => {
-              setWalking(true);
-              setCommentMode(false);
-              setPick(null);
-              send("walk");
-            }}
-            className={cn("inline-flex h-12 items-center gap-2 rounded-full bg-white/95 px-5 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]", walking && "hidden")}
-          >
-            <Footprints size={17} /> Recorrido
-          </button>
-          {enabled && !walking && (
-            <button onClick={() => (setCommentMode((v) => !v), setPick(null), setActive(null))} aria-pressed={commentMode} className={cn("inline-flex h-12 items-center gap-2 rounded-full px-5 text-[14px] font-semibold shadow-[var(--shadow-md)] transition active:scale-[0.97]", commentMode ? "bg-[#1f5fd1] text-white" : "bg-[#d9541e] text-white")}>
-              <MessageSquarePlus size={17} /> {commentMode ? "Cancelar" : "Comentar"}
+          <div className="pointer-events-auto flex gap-2">
+            <button
+              onClick={() => {
+                setCommentMode(false);
+                setPick(null);
+                setActive(null);
+                send("walk");
+              }}
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-white/95 px-5 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)] transition active:scale-[0.97]"
+            >
+              <Footprints size={17} /> Recorrido
             </button>
-          )}
-          {walking && (
-            <button onClick={() => goView(view)} className="inline-flex h-12 items-center gap-2 rounded-full bg-white/95 px-5 text-[14px] font-semibold text-ink shadow-[var(--shadow-md)]">
-              Salir del recorrido
-            </button>
-          )}
+            {enabled && (
+              <button onClick={() => (setCommentMode((v) => !v), setPick(null), setActive(null))} aria-pressed={commentMode} className={cn("inline-flex h-12 items-center gap-2 rounded-full px-5 text-[14px] font-semibold shadow-[var(--shadow-md)] transition active:scale-[0.97]", commentMode ? "bg-[#1f5fd1] text-white" : "bg-[#d9541e] text-white")}>
+                <MessageSquarePlus size={17} /> {commentMode ? "Cancelar" : "Comentar"}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Nota nueva anclada al punto elegido */}
       <AnimatePresence>
         {pick && (
           <Popup key="new" at={{ x: pick.sx, y: pick.sy }} onClose={closePopup}>
             <p className="text-[12px] font-semibold tracking-wide text-[#1f5fd1] uppercase">Nuevo comentario</p>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Tu nombre" className="mt-2 h-10 w-full rounded-[10px] border border-line bg-white px-3 text-[14px] text-ink outline-none focus:border-accent" />
-            <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} maxLength={1500} rows={3} placeholder="¿Qué te gustaría cambiar aquí?" className="mt-2 w-full resize-none rounded-[10px] border border-line bg-white p-3 text-[14px] leading-relaxed text-ink outline-none focus:border-accent" />
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Tu nombre" className="mt-2 h-11 w-full rounded-[10px] border border-line bg-white px-3 text-[16px] text-ink outline-none focus:border-accent" />
+            <textarea autoFocus={typeof window !== "undefined" && window.innerWidth >= 640} value={text} onChange={(e) => setText(e.target.value)} maxLength={1500} rows={3} placeholder="¿Qué te gustaría cambiar aquí?" className="mt-2 w-full resize-none rounded-[10px] border border-line bg-white p-3 text-[16px] leading-relaxed text-ink outline-none focus:border-accent" />
             {error && <p className="mt-1.5 text-[12px] text-danger">{error}</p>}
             <div className="mt-2 flex gap-2">
               <button onClick={closePopup} className="h-10 rounded-full bg-surface-2 px-4 text-[13px] font-medium text-ink-2">
@@ -205,7 +200,7 @@ function Popup({ at, onClose, children }: { at: { x: number; y: number } | null;
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: desktop ? 8 : 40 }}
       transition={{ duration: 0.4, ease: EXPO }}
-      className={cn("pointer-events-auto absolute z-10 w-[320px] rounded-[20px] bg-white p-4 shadow-[0_20px_60px_rgb(0_0_0/0.4)]", !desktop && "inset-x-3 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] w-auto")}
+      className={cn("pointer-events-auto absolute z-10 w-[320px] rounded-[20px] bg-white p-4 shadow-[0_20px_60px_rgb(0_0_0/0.4)]", !desktop && "inset-x-3 top-[max(4.5rem,calc(env(safe-area-inset-top)+4rem))] w-auto")}
       style={style}
     >
       <button onClick={onClose} className="absolute top-3 right-3 grid h-8 w-8 place-items-center rounded-full text-ink-3 hover:bg-surface-2" aria-label="Cerrar">

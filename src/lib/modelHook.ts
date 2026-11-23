@@ -13,7 +13,7 @@ const HOOK = `
  +'.rcpin{position:absolute;left:0;top:0;pointer-events:auto;border:0;cursor:pointer;width:34px;height:34px;border-radius:50% 50% 50% 3px;background:#d9541e;color:#fff;font:700 13px Inter,system-ui,sans-serif;display:grid;place-items:center;box-shadow:0 3px 10px rgba(0,0,0,.35);border:2px solid #fff;transition:opacity .2s,filter .2s}'
 
  +'.rcpin.s-in_progress{background:#d18a1f}.rcpin.s-done{background:#1b7a50}.rcpin.s-dismissed{background:#7b8580}'
- +'.rcpin.new{background:#1f5fd1;animation:rcpop .5s cubic-bezier(.16,1,.3,1)}.rcpin.on{filter:brightness(1.15);outline:3px solid rgba(255,255,255,.7)}.rcpin.dim{opacity:.35}'
+ +'.rcpin.new{background:#1f5fd1;animation:rcpop .5s cubic-bezier(.16,1,.3,1)}.rcpin.on{filter:brightness(1.15);outline:3px solid rgba(255,255,255,.7)}.rcpin.dim{opacity:.6}'
  +'@keyframes rcpop{from{scale:.2;opacity:0}to{scale:1;opacity:1}}';
  document.head.appendChild(css);
  const layer=document.createElement('div');layer.id='rcPins';document.body.appendChild(layer);
@@ -60,6 +60,9 @@ const HOOK = `
    if(c.type==='view'){const b=document.querySelector('[data-v="'+c.arg+'"]');if(b)b.click();}
    else if(c.type==='fly')flyTo(c.arg.cam,c.arg.tgt,c.arg.fov);
    else if(c.type==='walk'){const b=document.getElementById('bWalk');if(b)b.click();}}});
+ addEventListener('contextmenu',e=>{if(root.classList.contains('rc-guest'))e.preventDefault();});
+ const hud=document.getElementById('walkHud');
+ if(hud){let w=null;const rep=()=>{const on=hud.style.display!=='none'&&getComputedStyle(hud).display!=='none';if(on!==w){w=on;parent.postMessage({__rcWalk:on},'*');}};new MutationObserver(rep).observe(hud,{attributes:true,attributeFilter:['style']});rep();}
  parent.postMessage({__rcReady:1},'*');
 })();
 `;
@@ -67,7 +70,15 @@ const HOOK = `
 /** Estilos del modo invitado: el modelo queda limpio (sin paneles, medidas, lluvia ni edición). */
 export const GUEST_CSS =
   "html.rc-guest .ui,html.rc-guest #info,html.rc-guest .compass,html.rc-guest #badges,html.rc-guest #rsPanel,html.rc-guest #splitBar,html.rc-guest .wlight,html.rc-guest .dimL,html.rc-guest .dimN,html.rc-guest .dimV,html.rc-guest .dimR,html.rc-guest .dimT{display:none!important}" +
-  "html.rc-guest:not(.rc-showlbl) .lbl{display:none!important}";
+  "html.rc-guest:not(.rc-showlbl) .lbl{display:none!important}" +
+  // Tocar o mantener presionado nunca selecciona texto ni abre "Copiar / Buscar con Google"
+  "html.rc-guest,html.rc-guest *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important;-webkit-tap-highlight-color:transparent!important}" +
+  "html.rc-guest #walkHud button,html.rc-guest #pad .pb{touch-action:manipulation}" +
+  // Flechas del recorrido: botones redondos de vidrio, sin recuadro
+  "@media (max-width:760px){html.rc-guest #pad{gap:8px;grid-template-columns:repeat(3,52px)!important;grid-template-rows:repeat(2,52px)!important}" +
+  "html.rc-guest #pad .pb{border-radius:50%!important;background:rgba(15,42,32,.58)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.25)}" +
+  "html.rc-guest #pad .pb:active{background:#d9541e!important}" +
+  "html.rc-guest #mini{display:none!important}html.rc-guest body.mini-on #mini{display:block!important}}";
 
 /**
  * Inserta el enganche antes de `function go(k){` (ya existen scene, camera, controls y renderer) y evita que el modelo

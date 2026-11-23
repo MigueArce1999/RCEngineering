@@ -86,6 +86,7 @@ export function ProjectModelFrame({
   cmd = null,
   onPick,
   onPinClick,
+  onWalk,
 }: {
   path: string;
   settings: Record<string, string>;
@@ -110,6 +111,8 @@ export function ProjectModelFrame({
   cmd?: ModelCmd | null;
   onPick?: (p: ModelPick) => void;
   onPinClick?: (id: string) => void;
+  /** El modelo entró o salió del recorrido en primera persona */
+  onWalk?: (on: boolean) => void;
 }) {
   const [html, setHtml] = useState<string | null>(cache.get(path) ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +167,7 @@ export function ProjectModelFrame({
 
   const onPickRef = useRef(onPick);
   const onPinRef = useRef(onPinClick);
+  const onWalkRef = useRef(onWalk);
   const pushState = useRef<() => void>(() => {});
   const cmdRef = useRef<ModelCmd | null>(null);
   // Mensajes del puente de almacenamiento (solo del iframe propio)
@@ -172,6 +176,7 @@ export function ProjectModelFrame({
       if (e.source !== frame.current?.contentWindow || !e.data) return;
       if (e.data.__rcPick) return onPickRef.current?.(e.data.__rcPick as ModelPick);
       if (e.data.__rcPinClick) return onPinRef.current?.(String(e.data.__rcPinClick));
+      if (typeof e.data.__rcWalk === "boolean") return onWalkRef.current?.(e.data.__rcWalk);
       if (e.data.__rcReady) {
         pushState.current();
         const c = cmdRef.current;
@@ -191,6 +196,7 @@ export function ProjectModelFrame({
   useEffect(() => {
     onPickRef.current = onPick;
     onPinRef.current = onPinClick;
+    onWalkRef.current = onWalk;
     pushState.current = () => {
       const w = frame.current?.contentWindow;
       w?.postMessage({ __rcG: { guest, labels: showLabels, comment: commentMode, pins: pins ?? [], keepPreview: commentMode } }, "*");

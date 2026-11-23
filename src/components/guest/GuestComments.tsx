@@ -176,11 +176,11 @@ export function GuestCommentsProvider({ client, token, children }: { client: Sup
 
               <label className="mt-4 block">
                 <span className="mb-1.5 block text-[12px] font-medium text-ink-2">Tu nombre</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Ej. Carlos" className="h-11 w-full rounded-[12px] border border-line bg-white px-3 text-[15px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15" />
+                <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Ej. Carlos" className="h-11 w-full rounded-[12px] border border-line bg-white px-3 text-[16px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15" />
               </label>
               <label className="mt-3 block">
                 <span className="mb-1.5 block text-[12px] font-medium text-ink-2">Tu comentario</span>
-                <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={1500} rows={4} placeholder="Ej. ¿Podemos cambiar el color de la puerta a uno más claro?" className="w-full resize-none rounded-[12px] border border-line bg-white p-3 text-[15px] leading-relaxed text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15" />
+                <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={1500} rows={4} placeholder="Ej. ¿Podemos cambiar el color de la puerta a uno más claro?" className="w-full resize-none rounded-[12px] border border-line bg-white p-3 text-[16px] leading-relaxed text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15" />
               </label>
               {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
               <button onClick={() => void submit()} disabled={busy || !text.trim()} className={cn("mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-[14px] text-[15px] font-semibold text-white transition disabled:opacity-45", sent ? "bg-[#2ea06e]" : "bg-brand hover:brightness-110")}>
