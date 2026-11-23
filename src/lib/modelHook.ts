@@ -22,7 +22,11 @@ const HOOK = `
  function opaque(o){let v=o;while(v){if(v.visible===false)return false;v=v.parent;}
   const m=Array.isArray(o.material)?o.material[0]:o.material;if(m&&(m.opacity<.6||m.wireframe||m.visible===false))return false;return !o.isReflector&&!o.isSprite&&!o.isLine&&!o.isPoints;}
  function pickAt(cx,cy){const r=el.getBoundingClientRect();rc.setFromCamera(new THREE.Vector2((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1),camera);
-  for(const h of rc.intersectObjects(scene.children,true)){if(h.object.isMesh&&h.distance>.4&&opaque(h.object))return h.point;}return null;}
+  let hs=[];try{hs=rc.intersectObjects(scene.children,true);}catch(e){}
+  for(const h of hs){if(h.object.isMesh&&h.distance>.4&&opaque(h.object))return h.point;}
+  for(const h of hs){if(h.object.isMesh&&h.distance>.4&&!h.object.isReflector)return h.point;}   // cualquier superficie visible
+  const o=rc.ray.origin,d=rc.ray.direction;if(d.y<-.01){const t=-o.y/d.y;if(t>.4&&t<120)return new V3(o.x+d.x*t,0,o.z+d.z*t);}   // si no hay nada: el piso
+  return null;}
  function sync(){const list=st.pins.concat(st.preview?[{id:'__new',n:'+',p:st.preview.p,preview:true}]:[]);
   for(const [id,d] of els)if(!list.some(x=>x.id===id)){d.remove();els.delete(id);}
   for(const it of list){let d=els.get(it.id);
@@ -51,7 +55,8 @@ const HOOK = `
  const root=document.documentElement;
  addEventListener('message',e=>{const d=e.data;if(!d||typeof d!=='object')return;
   if(d.__rcG!==undefined){const g=d.__rcG;
-   if('guest' in g)root.classList.toggle('rc-guest',!!g.guest);
+   if('guest' in g){root.classList.toggle('rc-guest',!!g.guest);
+    if(g.guest){controls.enableDamping=true;controls.dampingFactor=.08;controls.rotateSpeed=.55;controls.zoomSpeed=.8;controls.panSpeed=.6;controls.screenSpacePanning=false;}}
    if('labels' in g)root.classList.toggle('rc-showlbl',!!g.labels);
    if('comment' in g){st.comment=!!g.comment;window.__rcBlock=st.comment;el.style.cursor=st.comment?'crosshair':'';if(!st.comment&&st.preview){st.preview=null;sync();}}
    if('pins' in g){st.pins=g.pins||[];if(!g.keepPreview)st.preview=null;sync();}

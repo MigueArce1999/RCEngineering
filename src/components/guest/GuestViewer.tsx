@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, CheckCircle2, Clock, Footprints, MessageSquarePlus, MousePointerClick, Send, Tag, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { cn, formatDate } from "@/lib/format";
 import type { GuestComment, GuestPin } from "@/lib/guest";
 import { ProjectModelFrame, type ModelCmd, type ModelPick } from "@/components/viewer/ProjectModelFrame";
@@ -30,6 +30,28 @@ const STATUS = {
   dismissed: { label: "Revisado", icon: Check, cls: "bg-surface-2 text-ink-2" },
 } as const;
 
+/** Área realmente visible (descuenta el teclado en iPhone): alto y desplazamiento superior. */
+function useVisibleArea() {
+  const snap = useSyncExternalStore(
+    (cb) => {
+      const vv = window.visualViewport;
+      vv?.addEventListener("resize", cb);
+      vv?.addEventListener("scroll", cb);
+      return () => {
+        vv?.removeEventListener("resize", cb);
+        vv?.removeEventListener("scroll", cb);
+      };
+    },
+    () => {
+      const vv = window.visualViewport;
+      return vv ? `${Math.round(vv.height)}|${Math.round(vv.offsetTop)}` : `${window.innerHeight}|0`;
+    },
+    () => "0|0",
+  );
+  const [h, top] = snap.split("|").map(Number);
+  return { h, top };
+}
+
 /**
  * Visor del modelo 3D para invitados: limpio, con pocas vistas y comentarios anclados a un punto,
  * como en Figma (tocas el lugar, escribes y queda un alfiler numerado).
@@ -53,6 +75,34 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
   const pins = useMemo(() => pinned.map((c, i) => ({ id: c.id, n: i + 1, p: (c.pin as GuestPin).p, status: c.status, active: c.id === active })), [pinned, active]);
   const activeComment = pinned.find((c) => c.id === active) ?? null;
   const send = (type: ModelCmd["type"], arg?: unknown) => setCmd((c) => ({ n: (c?.n ?? 0) + 1, type, arg }));
+  const area = useVisibleArea();
+  const bar = useRef<HTMLDivElement>(null);
+  const [hint, setHint] = useState(true);
+
+  // La página de atrás queda congelada: el iPhone no la desplaza ni la amplía al abrir el teclado
+  useEffect(() => {
+    const y = window.scrollY;
+    const b = document.body;
+    const prev = { position: b.style.position, top: b.style.top, width: b.style.width };
+    b.style.position = "fixed";
+    b.style.top = `-${y}px`;
+    b.style.width = "100%";
+    return () => {
+      b.style.position = prev.position;
+      b.style.top = prev.top;
+      b.style.width = prev.width;
+      window.scrollTo(0, y);
+    };
+  }, []);
+  useEffect(() => {
+    const t = window.setTimeout(() => setHint(false), 5200);
+    return () => window.clearTimeout(t);
+  }, []);
+  // La vista activa siempre queda centrada en la barra
+  useEffect(() => {
+    const el = bar.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (el && bar.current) bar.current.scrollTo({ left: el.offsetLeft - bar.current.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+  }, [view]);
 
   const goView = (k: string) => {
     setView(k);
@@ -132,12 +182,14 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
       {/* Barra inferior: vistas + recorrido + comentar. Durante el recorrido la oculta: el recorrido trae su propia tarjeta */}
       {!walking && (
         <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
-          <div className="scroll-thin pointer-events-auto flex max-w-full gap-1.5 overflow-x-auto rounded-full bg-[#0f2a20]/92 p-1.5 shadow-[0_10px_30px_rgb(0_0_0/0.35)] backdrop-blur-md" role="tablist" aria-label="Vistas">
+          <div className="pointer-events-auto relative w-full max-w-[640px] rounded-full bg-[#0f2a20]/92 shadow-[0_10px_30px_rgb(0_0_0/0.35)] backdrop-blur-md">
+            <div ref={bar} className="no-scrollbar flex snap-x snap-mandatory gap-1 overflow-x-auto scroll-smooth rounded-full p-1.5 [mask-image:linear-gradient(90deg,transparent,#000_20px,#000_calc(100%-20px),transparent)]" role="tablist" aria-label="Vistas">
             {VIEWS.map((v) => (
-              <button key={v.k} role="tab" aria-selected={view === v.k} onClick={() => goView(v.k)} className={cn("h-10 shrink-0 rounded-full px-3.5 text-[13px] font-medium transition active:scale-[0.96]", view === v.k ? "bg-white text-[#0f2a20]" : "text-white/75 hover:text-white")}>
+              <button key={v.k} role="tab" aria-selected={view === v.k} onClick={() => goView(v.k)} className={cn("h-11 shrink-0 snap-center rounded-full px-4 text-[14px] font-medium transition active:scale-[0.96]", view === v.k ? "bg-white text-[#0f2a20]" : "text-white/75 hover:text-white")}>
                 {v.l}
               </button>
             ))}
+            </div>
           </div>
           <div className="pointer-events-auto flex gap-2">
             <button
@@ -160,13 +212,23 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
         </div>
       )}
 
-      {/* Nota nueva anclada al punto elegido */}
+      {/* Pista de gestos al abrir */}
+      <AnimatePresence>
+        {hint && !walking && (
+          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EXPO }} className="pointer-events-none absolute bottom-[max(8.5rem,calc(env(safe-area-inset-bottom)+8.5rem))] left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-4 py-2 text-[12px] font-medium whitespace-nowrap text-white backdrop-blur-md">
+            Arrastra para girar · Pellizca para acercar
+          </motion.p>
+        )}
+      </AnimatePresence>
+
+      {/* Nota nueva anclada al punto elegido (dentro del área visible, encima del teclado) */}
+      <div className="pointer-events-none fixed left-0 z-10 w-full" style={{ top: area.top, height: area.h || "100%" }}>
       <AnimatePresence>
         {pick && (
           <Popup key="new" at={{ x: pick.sx, y: pick.sy }} onClose={closePopup}>
             <p className="text-[12px] font-semibold tracking-wide text-[#1f5fd1] uppercase">Nuevo comentario</p>
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Tu nombre" className="mt-2 h-11 w-full rounded-[10px] border border-line bg-white px-3 text-[16px] text-ink outline-none focus:border-accent" />
-            <textarea autoFocus={typeof window !== "undefined" && window.innerWidth >= 640} value={text} onChange={(e) => setText(e.target.value)} maxLength={1500} rows={3} placeholder="¿Qué te gustaría cambiar aquí?" className="mt-2 w-full resize-none rounded-[10px] border border-line bg-white p-3 text-[16px] leading-relaxed text-ink outline-none focus:border-accent" />
+            <textarea autoFocus={typeof window !== "undefined" && window.innerWidth >= 640} onFocus={() => window.scrollTo(0, 0)} enterKeyHint="send" value={text} onChange={(e) => setText(e.target.value)} maxLength={1500} rows={3} placeholder="¿Qué te gustaría cambiar aquí?" className="mt-2 w-full resize-none rounded-[10px] border border-line bg-white p-3 text-[16px] leading-relaxed text-ink outline-none focus:border-accent" />
             {error && <p className="mt-1.5 text-[12px] text-danger">{error}</p>}
             <div className="mt-2 flex gap-2">
               <button onClick={closePopup} className="h-10 rounded-full bg-surface-2 px-4 text-[13px] font-medium text-ink-2">
@@ -184,6 +246,7 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
           </Popup>
         )}
       </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
@@ -200,7 +263,7 @@ function Popup({ at, onClose, children }: { at: { x: number; y: number } | null;
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: desktop ? 8 : 40 }}
       transition={{ duration: 0.4, ease: EXPO }}
-      className={cn("pointer-events-auto absolute z-10 w-[320px] rounded-[20px] bg-white p-4 shadow-[0_20px_60px_rgb(0_0_0/0.4)]", !desktop && "inset-x-3 top-[max(4.5rem,calc(env(safe-area-inset-top)+4rem))] w-auto")}
+      className={cn("pointer-events-auto absolute z-10 w-[320px] rounded-[20px] bg-white p-4 shadow-[0_20px_60px_rgb(0_0_0/0.4)]", !desktop && "inset-x-3 top-3 w-auto")}
       style={style}
     >
       <button onClick={onClose} className="absolute top-3 right-3 grid h-8 w-8 place-items-center rounded-full text-ink-3 hover:bg-surface-2" aria-label="Cerrar">
