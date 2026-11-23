@@ -5,3 +5,7 @@ export const CAT_COLOR: Record<CostCategory, string> = { materials: "#1b7a50", l
 export const CATS: CostCategory[] = ["materials", "labor", "equipment", "other"];
 /** Un gasto cuenta en el presupuesto salvo que se haya sacado expresamente */
 export const counted = (e: Expense) => e.counts !== false;
+
+/** Consumo acumulado antes de empezar a registrar en la app (proyectos que ya venían en marcha) */
+export const OPENING = "Consumo previo (antes de usar la app)";
+export const isOpening = (e: Expense) => e.concept === OPENING;

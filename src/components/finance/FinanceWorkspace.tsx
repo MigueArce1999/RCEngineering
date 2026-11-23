@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Download, HardHat, Lock, Package, Pencil, Plus, Receipt, Search, TrendingDown, Truck, Wallet, X } from "lucide-react";
+import { Check, Download, Gauge as GaugeIcon, HardHat, Lock, Package, Pencil, Plus, Receipt, Search, TrendingDown, Truck, Wallet, X } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { CostCategory, Expense } from "@/types";
@@ -11,21 +11,19 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useCan } from "@/stores/authStore";
 import { useFinance } from "@/components/dashboard/widgets";
 import { COST_CATEGORY_LABEL } from "@/lib/domain";
-import { CATS, CAT_COLOR, counted } from "@/lib/financeUi";
+import { CATS, CAT_COLOR, OPENING, counted, isOpening } from "@/lib/financeUi";
 import { cn, formatCOP, formatCOPMillions, formatDate, formatPct, formatShortDate, parseISODate, todayISO } from "@/lib/format";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Deferred } from "@/components/ui/overlays";
 import { GlassButton } from "@/components/ui/primitives";
 import { ConfirmDelete, inputCls } from "@/components/docs/shared";
+import { EvmView } from "./EvmView";
 
 const EXPO = [0.16, 1, 0.3, 1] as const;
 const CAT_ICON: Record<CostCategory, ReactNode> = { materials: <Package size={15} />, labor: <HardHat size={15} />, equipment: <Truck size={15} />, other: <Receipt size={15} /> };
 const monthFmt = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" });
 const digits = (v: string) => Number(v.replace(/\D/g, "").slice(0, 14)) || 0;
 const money = (n: number) => (n ? new Intl.NumberFormat("es-CO").format(n) : "");
-/** Consumo acumulado antes de empezar a registrar en la app (proyectos que ya venían en marcha) */
-const OPENING = "Consumo previo (antes de usar la app)";
-const isOpening = (e: Expense) => e.concept === OPENING;
 /** Los gastos de nómina se crean y anulan desde el módulo de Nómina */
 const isPayroll = (e: Expense) => e.category === "labor" && e.concept.startsWith("Nómina ·");
 
@@ -34,6 +32,7 @@ export function FinanceWorkspace() {
   const open = useUI((s) => s.module === "finance");
   const openModule = useUI((s) => s.openModule);
   const project = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId));
+  const [tab, setTab] = useState<"summary" | "evm">("summary");
 
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && openModule("home")}>
@@ -50,13 +49,40 @@ export function FinanceWorkspace() {
                 {project?.name ?? "Proyecto"} · corte al {formatDate(todayISO())} · COP
               </Dialog.Description>
             </div>
+            <div className="hidden gap-1 rounded-full bg-surface-2 p-1 sm:flex" role="tablist" aria-label="Sección">
+              {(
+                [
+                  ["summary", "Resumen", Wallet],
+                  ["evm", "Valor ganado", GaugeIcon],
+                ] as const
+              ).map(([k, l, Icon]) => (
+                <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("relative flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition-colors", tab === k ? "text-ink" : "text-ink-2 hover:text-ink")}>
+                  {tab === k && <motion.span layoutId="fin-tab" className="absolute inset-0 rounded-full bg-white shadow-[var(--shadow-sm)]" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
+                  <Icon size={15} className="relative" />
+                  <span className="relative">{l}</span>
+                </button>
+              ))}
+            </div>
             <Dialog.Close className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:bg-surface-2 hover:text-ink" aria-label="Cerrar finanzas">
               <X size={18} />
             </Dialog.Close>
           </header>
+          {/* En celular las pestañas van debajo del encabezado */}
+          <div className="flex gap-1 border-b border-line/70 bg-white px-4 pb-3 sm:hidden" role="tablist" aria-label="Sección">
+            {(
+              [
+                ["summary", "Resumen"],
+                ["evm", "Valor ganado"],
+              ] as const
+            ).map(([k, l]) => (
+              <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("h-9 flex-1 rounded-full text-[13px] font-medium transition", tab === k ? "bg-ink text-white" : "bg-surface-2 text-ink-2")}>
+                {l}
+              </button>
+            ))}
+          </div>
           {open && (
             <Deferred>
-              <Body />
+              {tab === "summary" ? <Body /> : <EvmView />}
             </Deferred>
           )}
         </Dialog.Content>
