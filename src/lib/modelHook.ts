@@ -92,6 +92,33 @@ const HOOK = `
  function setLamas(on){try{if(on&&!LAM.g)LAM.g=buildLamas();if(LAM.g)LAM.g.visible=!!on;const t=document.getElementById('tLamas');if(t&&t.checked!==!!on)t.checked=!!on;}catch(e){}}
  {const lst=document.querySelector('.pane[data-p=capas] .list');
   if(lst&&!document.getElementById('tLamas')){const lb=document.createElement('label');lb.className='sw';lb.innerHTML='<span>Lamas en todas las ventanas<small>Celosía de madera</small></span><input type="checkbox" id="tLamas"><i></i>';lst.appendChild(lb);lb.querySelector('input').addEventListener('change',e=>setLamas(e.target.checked));}}
+
+ /* Jardín vertical en el patio interno: frente al ventanal del baño principal (muro norte del patio). */
+ {const W_=264/S,H_=2.75,cx=X(3082),cz=Z(1953),y0=.5,g=new THREE.Group();
+  const sd=(n=>()=>{n=(n*16807)%2147483647;return n/2147483647;})(7);
+  // fondo vegetal oscuro + marco de madera
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(W_,H_),new THREE.MeshStandardMaterial({color:'#1d4427',roughness:1}));back.position.set(cx,y0+H_/2,cz);g.add(back);
+  const wood=new THREE.MeshStandardMaterial({color:'#6b452c',roughness:.7});
+  const fb=(w,h,d,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wood);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;g.add(m);};
+  fb(W_+.12,.07,.1,cx,y0+H_+.035,cz+.05);fb(.07,H_,.1,cx-W_/2-.035,y0+H_/2,cz+.05);fb(.07,H_,.1,cx+W_/2+.035,y0+H_/2,cz+.05);
+  // jardinera inferior (con riego) y canal
+  fb(W_+.3,.32,.34,cx,y0-.02,cz+.2);
+  // hojas: una sola malla instanciada, con tonos verdes variados y relieve
+  const leaf=canvasTex0((c,z)=>{c.clearRect(0,0,z,z);c.fillStyle='#ffffff';c.beginPath();c.moveTo(z*.5,z*.04);c.bezierCurveTo(z*.95,z*.3,z*.9,z*.75,z*.5,z*.97);c.bezierCurveTo(z*.1,z*.75,z*.05,z*.3,z*.5,z*.04);c.fill();
+   c.strokeStyle='rgba(0,0,0,.28)';c.lineWidth=z*.03;c.beginPath();c.moveTo(z*.5,z*.08);c.lineTo(z*.5,z*.94);c.stroke();},128);
+  const N=1100,im=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1.35),new THREE.MeshStandardMaterial({map:leaf,alphaTest:.5,side:THREE.DoubleSide,roughness:.85}),N);
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),p=new V3(),sc=new V3(),col=new THREE.Color();
+  for(let i=0;i<N;i++){const lx=(sd()-.5)*W_,ly=sd()*H_;p.set(cx+lx,y0+ly,cz+.03+sd()*.13);
+   e.set((sd()-.5)*.9,(sd()-.5)*.9,sd()*Math.PI*2);q.setFromEuler(e);const k=.12+sd()*.13;sc.set(k,k,1);m4.compose(p,q,sc);im.setMatrixAt(i,m4);
+   const r=sd();col.setHSL(.24+sd()*.12,.45+sd()*.25,.2+sd()*.2+(r>.93?.12:0));im.setColorAt(i,col);}
+  im.castShadow=true;im.receiveShadow=true;im.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;g.add(im);
+  // flores pequeñas de acento (rosadas y blancas)
+  const fl=new THREE.InstancedMesh(new THREE.SphereGeometry(.035,6,5),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.7}),70);
+  for(let i=0;i<70;i++){p.set(cx+(sd()-.5)*W_,y0+.3+sd()*(H_-.4),cz+.1+sd()*.1);q.identity();sc.set(1,1,1);m4.compose(p,q,sc);fl.setMatrixAt(i,m4);col.set(sd()>.5?'#f4b6c8':'#fbf6ea');fl.setColorAt(i,col);}
+  fl.instanceMatrix.needsUpdate=true;if(fl.instanceColor)fl.instanceColor.needsUpdate=true;g.add(fl);
+  g.name='jardinVertical';scene.add(g);
+  const lst=document.querySelector('.pane[data-p=capas] .list');
+  if(lst&&!document.getElementById('tJV')){const lb=document.createElement('label');lb.className='sw';lb.innerHTML='<span>Jardín vertical<small>Patio del baño principal</small></span><input type="checkbox" id="tJV" checked><i></i>';lst.appendChild(lb);lb.querySelector('input').addEventListener('change',e=>{g.visible=e.target.checked;});}}
  addEventListener('contextmenu',e=>{if(root.classList.contains('rc-guest'))e.preventDefault();});
  const hud=document.getElementById('walkHud');
  if(hud){let w=null;const rep=()=>{const on=hud.style.display!=='none'&&getComputedStyle(hud).display!=='none';if(on!==w){w=on;parent.postMessage({__rcWalk:on},'*');}};new MutationObserver(rep).observe(hud,{attributes:true,attributeFilter:['style']});rep();}
