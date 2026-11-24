@@ -72,9 +72,26 @@ const HOOK = `
   else if(c.type==='next'){const b=document.getElementById('wNext');if(b)b.click();}
   else if(c.type==='prev'){const b=document.getElementById('wPrev');if(b)b.click();}
   else if(c.type==='exitwalk'){const b=document.getElementById('wExit');if(b)b.click();try{W.keys.delete('shift');}catch(e){}}
+  else if(c.type==='lamas')setLamas(!!c.arg);
   else if(c.type==='mini')document.body.classList.toggle('mini-on');}
  function stopInfo(){try{const s=STOPS[W.stop];if(s)parent.postMessage({__rcStop:{n:W.stop,total:STOPS.length,title:s[0],text:s[1]}},'*');}catch(e){}}
  const wt=document.getElementById('wTitle');if(wt)new MutationObserver(stopInfo).observe(wt,{childList:true,characterData:true,subtree:true});
+
+ /* Opción: lamas de madera en todas las ventanas (la fachada social ya tiene sus hojas). Una sola malla instanciada: liviana. */
+ const LAM={g:null};
+ function buildLamas(){const items=[];
+  GEO.glass.forEach(([x,z,w,d,f,t])=>{let top=Math.abs(t-f-2.2)<.05?t+.3:t;top=Math.min(top,4.2);const H=top-f;if(H<.9)return;
+   const hor=w>=d,L=hor?w:d;if(L<.5)return;try{if(isSocialFacade(x,z,w,d))return;}catch(e){}
+   const n=Math.max(4,Math.round(H/.09));for(let i=0;i<n;i++)items.push([x+w/2-OX,f+H/n*(i+.5),z+d/2-OZ,L-.04,hor]);});
+  const mat=new THREE.MeshStandardMaterial({color:'#8a5d3d',roughness:.6,metalness:.05});
+  const im=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),mat,Math.max(1,items.length));
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),qt=new THREE.Quaternion().setFromAxisAngle(new V3(1,0,0),-.7),qy=new THREE.Quaternion().setFromAxisAngle(new V3(0,1,0),Math.PI/2),s=new V3(),p=new V3();
+  items.forEach((it,i)=>{p.set(it[0],it[1],it[2]);if(it[4])q.copy(qt);else q.copy(qy).multiply(qt);s.set(it[3],.022,.105);m4.compose(p,q,s);im.setMatrixAt(i,m4);});
+  im.count=items.length;im.castShadow=true;im.receiveShadow=true;im.instanceMatrix.needsUpdate=true;
+  const g=new THREE.Group();g.add(im);scene.add(g);return g;}
+ function setLamas(on){try{if(on&&!LAM.g)LAM.g=buildLamas();if(LAM.g)LAM.g.visible=!!on;const t=document.getElementById('tLamas');if(t&&t.checked!==!!on)t.checked=!!on;}catch(e){}}
+ {const lst=document.querySelector('.pane[data-p=capas] .list');
+  if(lst&&!document.getElementById('tLamas')){const lb=document.createElement('label');lb.className='sw';lb.innerHTML='<span>Lamas en todas las ventanas<small>Celosía de madera</small></span><input type="checkbox" id="tLamas"><i></i>';lst.appendChild(lb);lb.querySelector('input').addEventListener('change',e=>setLamas(e.target.checked));}}
  addEventListener('contextmenu',e=>{if(root.classList.contains('rc-guest'))e.preventDefault();});
  const hud=document.getElementById('walkHud');
  if(hud){let w=null;const rep=()=>{const on=hud.style.display!=='none'&&getComputedStyle(hud).display!=='none';if(on!==w){w=on;parent.postMessage({__rcWalk:on},'*');}};new MutationObserver(rep).observe(hud,{attributes:true,attributeFilter:['style']});rep();}
