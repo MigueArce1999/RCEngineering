@@ -8,8 +8,8 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useProgress } from "@/stores/progressStore";
 import { useCan } from "@/stores/authStore";
 import { useProjectData } from "@/hooks/useProjectData";
-import { computeEvm, indexTone, type EvmMetrics, type EvmTone } from "@/lib/evm";
-import { cn, formatCOP, formatCOPMillions, formatDate, formatPct, formatShortDate, todayISO } from "@/lib/format";
+import { axisDate, axisM, computeEvm, indexTone, type EvmMetrics, type EvmTone } from "@/lib/evm";
+import { cn, formatCOP, formatCOPMillions, formatDate, formatPct, todayISO } from "@/lib/format";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Skeleton } from "@/components/ui/primitives";
 import { inputCls } from "@/components/docs/shared";
@@ -213,10 +213,10 @@ function EvmChart({ series, m }: { series: ReturnType<typeof computeEvm>["series
       ) : (
         <div className="mt-4 h-[300px] sm:h-[340px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={series} margin={{ top: 16, right: 24, bottom: 0, left: 0 }}>
+            <LineChart data={series} margin={{ top: 22, right: 16, bottom: 0, left: -8 }}>
               <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.6} />
-              <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={(t: number) => formatShortDate(new Date(t - new Date(t).getTimezoneOffset() * 60000).toISOString().slice(0, 10))} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} minTickGap={48} />
-              <YAxis tickFormatter={(v: number) => formatCOPMillions(v)} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} width={72} domain={[0, Math.ceil(top * 1.05)]} />
+              <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={axisDate} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} minTickGap={56} interval="preserveStartEnd" padding={{ left: 4, right: 14 }} />
+              <YAxis tickFormatter={axisM} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} width={60} tickCount={5} domain={[0, Math.ceil(top * 1.05)]} />
               <ReferenceLine y={m.bac} stroke="var(--ink-3)" strokeOpacity={0.4} strokeDasharray="2 4" label={{ value: "Valor base", position: "insideBottomRight", fontSize: 11, fill: "var(--ink-3)" }} />
               <ReferenceLine x={new Date(`${today}T00:00:00`).getTime()} stroke="var(--ink-3)" strokeOpacity={0.5} label={{ value: "Hoy", position: "insideTopLeft", fontSize: 11, fill: "var(--ink-2)" }} />
               <Tooltip
@@ -370,7 +370,7 @@ function FirstRecord({ autoPct, canEdit }: { autoPct: number; canEdit: boolean }
           Usar el avance por actividades ({formatPct(autoPct)}) <ArrowRight size={16} />
         </button>
       )}
-      <p className="mt-4 text-[12px] text-white/50">{autoPct > 0 ? "O ingresa el avance real con el formulario de la derecha." : "Ingresa el avance real con el formulario de la derecha."}</p>
+      <p className="mt-4 text-[12px] text-white/50">{autoPct > 0 ? "O ingresa el avance real en «Registro de avance real»." : "Ingresa el avance real en «Registro de avance real»."}</p>
     </section>
   );
 }
@@ -410,9 +410,9 @@ function ProgressLog({ canEdit, autoPct, hasEntries }: { canEdit: boolean; autoP
             <input type="range" min={0} max={100} step={0.5} value={pct} onChange={(e) => setPct(Number(e.target.value))} className="h-2 w-full cursor-pointer accent-[#1b7a50]" aria-label="Avance acumulado" />
             {last && pct < last.pct * 100 && <p className="mt-1 text-[11px] text-[#7c5314]">Es menor que el último registro ({formatPct(last.pct)}). Verifica que sea correcto.</p>}
           </div>
-          <div className="grid grid-cols-[1fr_140px] gap-2">
-            <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={280} placeholder="Nota (opcional)" className={cn(inputCls, "h-9 text-[13px]")} />
-            <input type="date" value={date} max={todayISO()} onChange={(e) => e.target.value && setDate(e.target.value)} className={cn(inputCls, "h-9 px-2 text-[13px]")} aria-label="Fecha del avance" />
+          <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-[minmax(0,1fr)_150px]">
+            <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={280} placeholder="Nota (opcional)" className={cn(inputCls, "h-10 text-[16px]")} />
+            <input type="date" value={date} max={todayISO()} onChange={(e) => e.target.value && setDate(e.target.value)} className={cn(inputCls, "block h-10 w-full min-w-0 max-w-full appearance-none px-3 text-[16px]")} aria-label="Fecha del avance" />
           </div>
           <button onClick={() => void submit()} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-brand text-[14px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50">
             <Plus size={16} /> {busy ? "Guardando…" : "Registrar avance"}

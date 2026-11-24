@@ -12,6 +12,7 @@ import { useCan } from "@/stores/authStore";
 import { useFinance } from "@/components/dashboard/widgets";
 import { COST_CATEGORY_LABEL } from "@/lib/domain";
 import { CATS, CAT_COLOR, OPENING, counted, isOpening } from "@/lib/financeUi";
+import { axisDate, axisM, spentAt } from "@/lib/evm";
 import { cn, formatCOP, formatCOPMillions, formatDate, formatPct, formatShortDate, parseISODate, todayISO } from "@/lib/format";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Deferred } from "@/components/ui/overlays";
@@ -443,19 +444,21 @@ function Stat({ label, sub, children }: { label: string; sub?: string; children:
 function BalanceChart({ budget, expenses }: { budget: number; expenses: Expense[] }) {
   const startDate = useProjectStore((s) => s.projects.find((p) => p.id === s.projectId)?.startDate);
   const data = useMemo(() => {
-    const byDay = new Map<string, number>();
-    for (const e of expenses) if (counted(e)) byDay.set(e.date, (byDay.get(e.date) ?? 0) + e.amount);
-    const days = [...byDay.keys()].sort();
-    const start = startDate && (!days[0] || startDate < days[0]) ? startDate : (days[0] ?? todayISO());
-    let bal = budget;
-    const pts = [{ date: start, saldo: budget, gasto: 0 }];
-    for (const d of days) {
-      bal -= byDay.get(d)!;
-      pts.push({ date: d, saldo: bal, gasto: byDay.get(d)! });
-    }
     const today = todayISO();
-    if (pts[pts.length - 1].date < today) pts.push({ date: today, saldo: bal, gasto: 0 });
-    return pts.map((p) => ({ ...p, t: parseISODate(p.date).getTime() }));
+    const counted_ = expenses.filter(counted);
+    const first = counted_.reduce((m, e) => (e.date < m ? e.date : m), today);
+    const start = startDate && startDate < first ? startDate : first;
+    // Fechas de muestra: cada semana + los días de gasto (con un punto justo antes, para que el escalón sea exacto)
+    const days = new Set<string>([start, today]);
+    for (let t = parseISODate(start).getTime(); t < parseISODate(today).getTime(); t += 7 * 86400000) days.add(new Date(t - new Date(t).getTimezoneOffset() * 60000).toISOString().slice(0, 10));
+    const pts: { t: number; date: string; saldo: number; gasto: number }[] = [];
+    for (const d of [...days].sort()) {
+      const t = parseISODate(d).getTime();
+      const paid = counted_.filter((e) => e.date === d && !isOpening(e)).reduce((s, e) => s + e.amount, 0);
+      if (paid > 0) pts.push({ t: t - 1, date: d, saldo: budget - spentAt(expenses, new Date(t - 86400000).toISOString().slice(0, 10), today), gasto: 0 });
+      pts.push({ t, date: d, saldo: budget - spentAt(expenses, d, today), gasto: paid });
+    }
+    return pts;
   }, [budget, expenses, startDate]);
   // Escala acercada al rango del saldo para que cada gasto se note (el eje lo indica)
   const minBal = Math.min(...data.map((d) => d.saldo));
@@ -464,16 +467,16 @@ function BalanceChart({ budget, expenses }: { budget: number; expenses: Expense[
 
   return (
     <section className="rounded-[24px] bg-white p-5 ring-1 ring-line/70 sm:p-6">
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <h3 className="text-[15px] font-semibold text-ink">Saldo disponible en el tiempo</h3>
-        <span className="text-[12px] text-ink-3">Baja con cada gasto registrado</span>
+        <span className="text-[12px] text-ink-3">Baja con cada gasto</span>
       </div>
-      <div className="mt-4 h-[220px]">
+      <div className="mt-3 h-[210px] sm:mt-4 sm:h-[230px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 16, right: 8, bottom: 0, left: 0 }}>
+          <LineChart data={data} margin={{ top: 22, right: 16, bottom: 0, left: -8 }}>
             <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.6} />
-            <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={(t: number) => formatShortDate(new Date(t).toISOString().slice(0, 10))} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} minTickGap={40} />
-            <YAxis tickFormatter={(v: number) => formatCOPMillions(v)} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} width={72} domain={domain} allowDataOverflow />
+            <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={axisDate} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} minTickGap={56} interval="preserveStartEnd" padding={{ left: 4, right: 14 }} />
+            <YAxis tickFormatter={axisM} tick={{ fontSize: 11, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} width={60} tickCount={5} domain={domain} allowDataOverflow />
             {domain[0] <= 0 && <ReferenceLine y={0} stroke="var(--ink-3)" strokeOpacity={0.5} />}
             <Tooltip
               cursor={{ stroke: "var(--ink-3)", strokeWidth: 1, strokeDasharray: "3 3" }}
@@ -489,7 +492,7 @@ function BalanceChart({ budget, expenses }: { budget: number; expenses: Expense[
                 );
               }}
             />
-            <Line type="stepAfter" dataKey="saldo" stroke="#1b7a50" strokeWidth={2} dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff", fill: "#1b7a50" }} isAnimationActive animationDuration={900} />
+            <Line type="linear" dataKey="saldo" stroke="#1b7a50" strokeWidth={2} dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff", fill: "#1b7a50" }} isAnimationActive animationDuration={900} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -659,7 +662,7 @@ function Movements({ expenses, budget, canEdit, fresh }: { expenses: Expense[]; 
           <Search size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar gasto" className={cn(inputCls, "h-9 pl-8 text-[13px]")} />
         </label>
-        <div className="scroll-thin flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-2 p-1">
+        <div className="no-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-2 p-1 [mask-image:linear-gradient(90deg,#000_calc(100%-28px),transparent)]">
           {(["all", ...CATS] as const).map((c) => (
             <button key={c} onClick={() => setCat(c)} className={cn("h-7 shrink-0 rounded-full px-2.5 text-[12px] font-medium whitespace-nowrap transition", cat === c ? "bg-white text-ink shadow-[var(--shadow-sm)]" : "text-ink-2 hover:text-ink")}>
               {c === "all" ? "Todos" : COST_CATEGORY_LABEL[c]}
@@ -701,45 +704,48 @@ function Row({ e, after, canEdit, onEdit }: { e: Expense; after: number; canEdit
   const payroll = isPayroll(e);
   const on = counted(e);
   return (
-    <div className="group flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 sm:flex-nowrap">
+    <div className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center sm:py-2.5">
       <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-surface-2", !on && "opacity-50")} style={{ color: CAT_COLOR[e.category] }}>
         {CAT_ICON[e.category]}
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         <p className={cn("truncate text-[14px] font-medium", on ? "text-ink" : "text-ink-3")}>{e.concept}</p>
-        <p className="text-[12px] text-ink-2">
-          {formatDate(e.date)} · {COST_CATEGORY_LABEL[e.category]}
-          {payroll && <span className="ml-1.5 rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold text-brand">Nómina</span>}
-          {isOpening(e) && <span className="ml-1.5 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-semibold text-ink-2">Saldo inicial</span>}
-          {!on && <span className="ml-1.5 rounded-full bg-warning-soft px-1.5 py-px text-[10px] font-semibold text-[#7c5314]">Fuera del presupuesto</span>}
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-ink-2">
+          <span className="whitespace-nowrap">{formatShortDate(e.date)}</span>
+          <span aria-hidden>·</span>
+          <span className="whitespace-nowrap">{COST_CATEGORY_LABEL[e.category]}</span>
+          {payroll && <span className="rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold whitespace-nowrap text-brand">Nómina</span>}
+          {isOpening(e) && <span className="rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-semibold whitespace-nowrap text-ink-2">Saldo inicial</span>}
+          {!on && <span className="rounded-full bg-warning-soft px-1.5 py-px text-[10px] font-semibold whitespace-nowrap text-[#7c5314]">Fuera del presupuesto</span>}
         </p>
       </div>
-      <div className="text-right">
+      <div className="text-right whitespace-nowrap">
         <p className={cn("tabular text-[14px] font-semibold", on ? "text-ink" : "text-ink-3 line-through decoration-ink-3/50")}>{on ? "−" : ""}{formatCOP(e.amount)}</p>
         <p className={cn("tabular text-[11px]", on && after < 0 ? "text-danger" : "text-ink-3")}>{on ? `Saldo ${formatCOP(after)}` : "No descuenta"}</p>
       </div>
       {canEdit && (
-        <div className="flex shrink-0 items-center justify-end gap-1">
+        <div className="col-span-3 col-start-1 -mt-1 flex items-center justify-end gap-1 border-t border-line/50 pt-2 sm:col-span-1 sm:col-start-4 sm:row-start-1 sm:mt-0 sm:border-0 sm:pt-0">
+          <span className="mr-auto text-[11px] text-ink-3 sm:hidden">{on ? "Cuenta en el presupuesto" : "Fuera del presupuesto"}</span>
           <button
             role="switch"
             aria-checked={on}
             onClick={() => void update({ ...e, counts: !on })}
             title={on ? "Cuenta en el presupuesto. Toca para sacarlo (lo paga un tercero)" : "No cuenta en el presupuesto. Toca para incluirlo"}
-            className={cn("relative h-6 w-10 shrink-0 rounded-full transition-colors duration-300", on ? "bg-[#2ea06e]" : "bg-surface-3")}
+            className={cn("relative h-7 w-12 shrink-0 rounded-full transition-colors duration-300 sm:h-6 sm:w-10", on ? "bg-[#2ea06e]" : "bg-surface-3")}
           >
-            <span className={cn("absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-[var(--shadow-sm)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]", on && "translate-x-4")} />
+            <span className={cn("absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow-[var(--shadow-sm)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] sm:h-5 sm:w-5", on && "translate-x-5 sm:translate-x-4")} />
             <span className="sr-only">{on ? "Cuenta en el presupuesto" : "Fuera del presupuesto"}</span>
           </button>
-          <div className="flex w-[76px] justify-end gap-0.5 opacity-100 transition sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-            <button onClick={onEdit} className="grid h-8 w-8 place-items-center rounded-full text-ink-2 transition hover:bg-surface-2 hover:text-ink" aria-label={`Editar ${e.concept}`}>
-              <Pencil size={14} />
+          <div className="flex w-[84px] justify-end gap-0.5 transition sm:w-[76px] sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+            <button onClick={onEdit} className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:bg-surface-2 hover:text-ink sm:h-8 sm:w-8" aria-label={`Editar ${e.concept}`}>
+              <Pencil size={15} />
             </button>
             {payroll ? (
-              <span className="grid h-8 w-8 place-items-center text-ink-3" title="Para anular este gasto reabre la liquidación en Nómina">
+              <span className="grid h-9 w-9 place-items-center text-ink-3 sm:h-8 sm:w-8" title="Para anular este gasto reabre la liquidación en Nómina">
                 <Lock size={14} />
               </span>
             ) : (
-              <ConfirmDelete size="sm" label="" className="min-w-8 px-2" onConfirm={() => void remove(e.id)} />
+              <ConfirmDelete size="sm" label="" className="min-w-9 px-2" onConfirm={() => void remove(e.id)} />
             )}
           </div>
         </div>

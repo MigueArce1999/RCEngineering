@@ -80,6 +80,23 @@ export function plannedValue(curve: { date: string; amount: number }[], date: st
   return bac * Math.min(1, Math.max(0, (t - ts(start)) / span));
 }
 
+/** Gastado hasta una fecha (solo gastos que cuentan). El consumo previo, sin fecha real, se reparte parejo hasta hoy. */
+export function spentAt(expenses: Expense[], d: string, today: string) {
+  return expenses.reduce((sum, e) => {
+    if (e.counts === false) return sum;
+    if (isOpening(e)) {
+      const span = ts(today) - ts(e.date);
+      return sum + (span > 0 ? e.amount * Math.min(1, Math.max(0, (ts(d) - ts(e.date)) / span)) : d >= e.date ? e.amount : 0);
+    }
+    return e.date <= d ? sum + e.amount : sum;
+  }, 0);
+}
+
+/** Eje de dinero compacto: "342 M" (sin signo ni salto de línea) */
+export const axisM = (v: number) => (Math.abs(v) >= 10_000_000 ? `${Math.round(v / 1e6)} M` : `${(v / 1e6).toFixed(1).replace(".", ",")} M`);
+/** Fecha corta de eje: "24 nov" */
+export const axisDate = (t: number) => new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short" }).format(new Date(t)).replace(".", "");
+
 export function computeEvm(input: {
   bac: number;
   start: string;
@@ -93,15 +110,7 @@ export function computeEvm(input: {
   const today = input.today ?? todayISO();
   if (!bac || !progress.length) return { series: [], metrics: null };
   const counted = input.expenses.filter((e) => e.counts !== false).sort((a, b) => a.date.localeCompare(b.date));
-  // El consumo previo (acumulado antes de usar la app) no tiene fecha real: se reparte linealmente hasta hoy
-  const acAt = (d: string) =>
-    counted.reduce((sum, e) => {
-      if (isOpening(e)) {
-        const span = ts(today) - ts(e.date);
-        return sum + (span > 0 ? e.amount * Math.min(1, Math.max(0, (ts(d) - ts(e.date)) / span)) : d >= e.date ? e.amount : 0);
-      }
-      return e.date <= d ? sum + e.amount : sum;
-    }, 0);
+  const acAt = (d: string) => spentAt(counted, d, today);
 
   // Puntos de la serie: cada semana + fechas de registros y hoy
   const horizon = Math.max(ts(end), ts(today));
