@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, Plus, TriangleAlert } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { QuoteStatus } from "@/types";
 import { useUI } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -15,6 +15,7 @@ import { STAGE_STATUS_LABEL, inventoryItems, quoteTotals } from "@/lib/domain";
 import { cn, formatCOP, formatDate, formatNumber, formatPct } from "@/lib/format";
 import { Drawer, Modal } from "@/components/ui/overlays";
 import { Avatar, GlassButton, ProgressBar, StatusBadge } from "@/components/ui/primitives";
+import { InventoryPanel } from "@/components/inventory/InventoryPanel";
 import { useFinance } from "@/components/dashboard/widgets";
 
 const QUOTE_STATUS: Record<QuoteStatus, { label: string; tone: "success" | "warning" | "neutral" | "danger" }> = {
@@ -169,57 +170,6 @@ function MaterialsPanel() {
         ))}
       </Table>
       <p className="mt-3 text-[12px] text-ink-3">El consumo es 0 porque la obra aún no inicia (Etapa 1 en proceso); el material recibido corresponde a compras anticipadas.</p>
-    </div>
-  );
-}
-
-function InventoryPanel() {
-  const { materials, movements } = useCatalog();
-  const items = useMemo(() => inventoryItems(materials), [materials]);
-  const name = (id: string) => materials.find((m) => m.id === id)?.name ?? id;
-  const unit = (id: string) => materials.find((m) => m.id === id)?.unit ?? "";
-  return (
-    <div className="space-y-5 px-6 pb-6">
-      <Table head={["Referencia", "Stock", "Mínimo", "Estado"]} align={["left", "right", "right", "left"]}>
-        {items.map((i) => (
-          <tr key={i.materialId}>
-            <td className="px-4 py-3 font-medium text-ink">{i.name}</td>
-            <td className="px-4 py-3 text-right">
-              {formatNumber(i.stock)} <span className="text-ink-3">{i.unit}</span>
-            </td>
-            <td className="px-4 py-3 text-right text-ink-2">{i.minStock ? formatNumber(i.minStock) : "—"}</td>
-            <td className="px-4 py-3">
-              {i.low ? (
-                <StatusBadge tone="warning">
-                  <TriangleAlert size={12} /> Stock bajo
-                </StatusBadge>
-              ) : i.minStock === 0 ? (
-                <StatusBadge>Pedido por obra</StatusBadge>
-              ) : (
-                <StatusBadge tone="success">Disponible</StatusBadge>
-              )}
-            </td>
-          </tr>
-        ))}
-      </Table>
-      <div>
-        <p className="mb-2 text-[13px] font-semibold text-ink">Movimientos recientes</p>
-        <Table head={["Fecha", "Material", "Tipo", "Cantidad", "Soporte"]} align={["left", "left", "left", "right", "left"]}>
-          {[...movements].reverse().map((m) => (
-            <tr key={m.id}>
-              <td className="px-4 py-2.5 text-ink-2">{formatDate(m.date)}</td>
-              <td className="px-4 py-2.5 text-ink">{name(m.materialId)}</td>
-              <td className="px-4 py-2.5">
-                <StatusBadge tone={m.type === "in" ? "success" : "info"}>{m.type === "in" ? "Entrada" : "Salida"}</StatusBadge>
-              </td>
-              <td className="px-4 py-2.5 text-right">
-                {formatNumber(m.qty)} <span className="text-ink-3">{unit(m.materialId)}</span>
-              </td>
-              <td className="px-4 py-2.5 text-ink-2">{m.reference}</td>
-            </tr>
-          ))}
-        </Table>
-      </div>
     </div>
   );
 }
