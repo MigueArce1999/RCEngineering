@@ -3,11 +3,14 @@
 import Image from "next/image";
 import { asset } from "@/lib/asset";
 import { loaders, prefetchPayroll } from "@/lib/preload";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import {
   Bell,
+  ChevronRight,
+  X,
   Box,
   ChartColumn,
   FileText,
@@ -177,33 +180,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {mobileOpen && (
-        <nav aria-label="Módulos" className="border-t border-line/60 px-4 pb-3 xl:hidden">
-          <ul className="grid grid-cols-4 gap-1 pt-2 sm:grid-cols-8">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = active === item.key;
-              return (
-                <li key={item.key}>
-                  <button
-                    onClick={() => {
-                      navigate(item.key);
-                      setMobileOpen(false);
-                    }}
-                    className={cn(
-                      "flex h-14 w-full flex-col items-center justify-center gap-1 rounded-[12px] text-[11px] font-medium",
-                      isActive ? "glass-brand" : "text-ink-2 hover:bg-surface-2",
-                    )}
-                  >
-                    <Icon size={18} strokeWidth={1.7} />
-                    {item.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      )}
+      <MobileMenu open={mobileOpen} onOpenChange={setMobileOpen} items={navItems} active={active} onSelect={navigate} onSearch={() => setCommandOpen(true)} />
     </header>
   );
 }
@@ -330,5 +307,77 @@ function ProfileMenu() {
         </Dropdown.Content>
       </Dropdown.Portal>
     </Dropdown.Root>
+  );
+}
+
+/** Menú a pantalla completa estilo iOS: capa oscura con desenfoque y lista grande. */
+function MobileMenu({ open, onOpenChange, items, active, onSelect, onSearch }: { open: boolean; onOpenChange: (v: boolean) => void; items: typeof NAV_ITEMS; active: ModuleKey; onSelect: (k: ModuleKey) => void; onSearch: () => void }) {
+  const ease = [0.32, 0.72, 0, 1] as const;
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <AnimatePresence>
+        {open && (
+          <Dialog.Portal forceMount>
+            <Dialog.Overlay asChild forceMount>
+              <motion.div className="fixed inset-0 z-[60] bg-[#06120d]/70 backdrop-blur-2xl backdrop-saturate-150" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.28 }} />
+            </Dialog.Overlay>
+            <Dialog.Content asChild forceMount aria-describedby={undefined}>
+              <motion.div
+                className="fixed inset-0 z-[61] flex flex-col px-5 pt-[max(16px,env(safe-area-inset-top))] pb-[max(20px,env(safe-area-inset-bottom))] focus:outline-none"
+                initial={{ opacity: 0, scale: 0.96, y: 18 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97, y: 10 }}
+                transition={{ duration: 0.38, ease }}
+              >
+                <div className="mx-auto flex w-full max-w-[560px] items-center justify-between pt-1">
+                  <Dialog.Title className="text-[13px] font-medium tracking-[0.08em] text-white/60 uppercase">Menú</Dialog.Title>
+                  <Dialog.Close className="grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/20 backdrop-blur-xl transition active:scale-95" aria-label="Cerrar menú">
+                    <X size={22} />
+                  </Dialog.Close>
+                </div>
+                <div className="scroll-thin mx-auto mt-4 min-h-0 w-full max-w-[560px] flex-1 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      onOpenChange(false);
+                      onSearch();
+                    }}
+                    className="mb-4 flex h-12 w-full items-center gap-3 rounded-[16px] bg-white/12 px-4 text-left text-[16px] text-white/70 ring-1 ring-white/15"
+                  >
+                    <Search size={18} /> Buscar proyecto, plano, material
+                  </button>
+                  <ul className="space-y-1.5">
+                    {items.map((item, i) => {
+                      const Icon = item.icon;
+                      const isActive = active === item.key;
+                      return (
+                        <motion.li key={item.key} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 + i * 0.035, duration: 0.36, ease }}>
+                          <button
+                            onClick={() => {
+                              onOpenChange(false);
+                              onSelect(item.key);
+                            }}
+                            aria-current={isActive ? "page" : undefined}
+                            className={cn("flex w-full items-center gap-4 rounded-[20px] px-3.5 py-3 text-left transition active:scale-[.985]", isActive ? "bg-white text-[#0b2a1f]" : "bg-white/8 text-white ring-1 ring-white/10")}
+                          >
+                            <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-[14px]", isActive ? "bg-[#0b3d2c] text-white" : "bg-white/14 text-white")}>
+                              <Icon size={23} strokeWidth={1.7} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[18px] leading-tight font-semibold tracking-[-0.01em]">{item.label}</span>
+                              <span className={cn("mt-0.5 block truncate text-[13px]", isActive ? "text-[#0b2a1f]/60" : "text-white/55")}>{item.hint}</span>
+                            </span>
+                            <ChevronRight size={18} className={isActive ? "text-[#0b2a1f]/40" : "text-white/35"} />
+                          </button>
+                        </motion.li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </motion.div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        )}
+      </AnimatePresence>
+    </Dialog.Root>
   );
 }
