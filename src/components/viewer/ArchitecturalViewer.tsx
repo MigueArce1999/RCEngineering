@@ -345,13 +345,13 @@ export function ArchitecturalViewer() {
           <>
             <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 sm:bottom-4">
               <div className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1">
-                <button onClick={() => setInfoOpen((v) => !v)} aria-pressed={infoOpen} className={cn("h-9 rounded-full px-3.5 text-[13px] font-medium transition", infoOpen ? "bg-white text-ink shadow-[var(--shadow-sm)]" : "text-ink-2 hover:text-ink")}>
-                  Ficha del proyecto
+                <button onClick={() => setInfoOpen((v) => !v)} aria-pressed={infoOpen} className={cn("h-9 whitespace-nowrap rounded-full px-3 text-[13px] font-medium transition sm:px-3.5", infoOpen ? "bg-white text-ink shadow-[var(--shadow-sm)]" : "text-ink-2 hover:text-ink")}>
+                  Ficha<span className="hidden sm:inline"> del proyecto</span>
                 </button>
                 {canManage && (
                   <Dropdown.Root>
                     <Dropdown.Trigger asChild>
-                      <button className="h-9 rounded-full px-3.5 text-[13px] font-medium text-ink-2 transition hover:text-ink">Modelo</button>
+                      <button className="h-9 rounded-full px-3 text-[13px] font-medium text-ink-2 transition hover:text-ink sm:px-3.5">Modelo</button>
                     </Dropdown.Trigger>
                     <Dropdown.Portal>
                       <Dropdown.Content side="top" sideOffset={8} className="anim-pop glass-float z-[55] w-56 rounded-[16px] p-1.5">
@@ -371,7 +371,7 @@ export function ArchitecturalViewer() {
                   </Dropdown.Root>
                 )}
                 <Tooltip content="Pantalla completa del navegador">
-                  <button onClick={toggleFullscreen} className="grid h-9 w-9 place-items-center rounded-full text-ink-2 transition hover:text-ink" aria-label="Pantalla completa">
+                  <button onClick={toggleFullscreen} className="hidden h-9 sm:grid w-9 place-items-center rounded-full text-ink-2 transition hover:text-ink" aria-label="Pantalla completa">
                     <Maximize2 size={16} />
                   </button>
                 </Tooltip>

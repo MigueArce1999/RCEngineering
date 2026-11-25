@@ -26,14 +26,14 @@ export function HeaderActions() {
   const remote = useProjectStore((s) => s.source === "remote");
   const canShare = useCan("projects.manage");
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2.5">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 sm:flex sm:flex-wrap sm:justify-end">
       <ProjectSelector />
       {remote && canShare && (
-        <GlassButton variant="glass" size="lg" icon={<Share2 size={17} />} onClick={() => openDocs("guests")} className="px-4" aria-label="Compartir con invitados">
+        <GlassButton variant="glass" size="lg" icon={<Share2 size={17} />} onClick={() => openDocs("guests")} className="h-12 w-12 justify-center px-0 sm:w-auto sm:px-4" aria-label="Compartir con invitados">
           <span className="hidden sm:inline">Compartir</span>
         </GlassButton>
       )}
-      <GlassButton variant="primary" size="lg" icon={<Plus size={18} strokeWidth={2} />} onClick={() => setQuickQuoteOpen(true)} className="px-5">
+      <GlassButton variant="primary" size="lg" icon={<Plus size={18} strokeWidth={2} />} onClick={() => setQuickQuoteOpen(true)} className="col-span-2 w-full justify-center px-5 sm:w-auto">
         Cotización rápida
       </GlassButton>
     </div>
@@ -53,8 +53,8 @@ export function ProjectSelector() {
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <button className="glass flex h-12 max-w-[280px] items-center gap-3 rounded-[14px] pr-3 pl-4 text-left transition hover:bg-white/85" aria-label="Seleccionar proyecto activo">
-          <span className="flex min-w-0 flex-col">
+        <button className="glass flex h-12 w-full min-w-0 items-center sm:max-w-[280px] gap-3 rounded-[14px] pr-3 pl-4 text-left transition hover:bg-white/85" aria-label="Seleccionar proyecto activo">
+          <span className="flex min-w-0 flex-1 flex-col">
             <span className="text-[11px] font-medium tracking-wide text-ink-3 uppercase">Proyecto activo</span>
             <span className="truncate text-[14px] font-semibold text-ink">{active?.name ?? "Sin proyecto"}</span>
           </span>
