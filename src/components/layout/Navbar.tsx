@@ -331,8 +331,8 @@ function MobileMenu({ open, onOpenChange, items, active, onSelect, onSearch }: {
               >
                 <div className="mx-auto flex w-full max-w-[560px] items-center justify-between pt-1">
                   <Dialog.Title className="text-[13px] font-medium tracking-[0.08em] text-white/60 uppercase">Menú</Dialog.Title>
-                  <Dialog.Close className="grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/20 backdrop-blur-xl transition active:scale-95" aria-label="Cerrar menú">
-                    <X size={22} />
+                  <Dialog.Close className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/20 backdrop-blur-xl transition active:scale-95" aria-label="Cerrar menú">
+                    <X size={18} />
                   </Dialog.Close>
                 </div>
                 <div className="scroll-thin mx-auto mt-4 min-h-0 w-full max-w-[560px] flex-1 overflow-y-auto">
@@ -341,32 +341,30 @@ function MobileMenu({ open, onOpenChange, items, active, onSelect, onSearch }: {
                       onOpenChange(false);
                       onSearch();
                     }}
-                    className="mb-4 flex h-12 w-full items-center gap-3 rounded-[16px] bg-white/12 px-4 text-left text-[16px] text-white/70 ring-1 ring-white/15"
+                    className="mb-3 flex h-11 w-full items-center gap-2.5 rounded-[14px] bg-white/10 px-3.5 text-left text-[15px] text-white/60 ring-1 ring-white/12"
                   >
-                    <Search size={18} /> Buscar proyecto, plano, material
+                    <Search size={16} /> Buscar
                   </button>
-                  <ul className="space-y-1.5">
+                  <ul className="divide-y divide-white/10 overflow-hidden rounded-[18px] bg-white/8 ring-1 ring-white/12">
                     {items.map((item, i) => {
                       const Icon = item.icon;
                       const isActive = active === item.key;
                       return (
-                        <motion.li key={item.key} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 + i * 0.035, duration: 0.36, ease }}>
+                        <motion.li key={item.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 + i * 0.03, duration: 0.34, ease }}>
                           <button
                             onClick={() => {
                               onOpenChange(false);
                               onSelect(item.key);
                             }}
                             aria-current={isActive ? "page" : undefined}
-                            className={cn("flex w-full items-center gap-4 rounded-[20px] px-3.5 py-3 text-left transition active:scale-[.985]", isActive ? "bg-white text-[#0b2a1f]" : "bg-white/8 text-white ring-1 ring-white/10")}
+                            className={cn("flex w-full items-center gap-3.5 px-4 py-3 text-left text-white transition active:bg-white/10", isActive && "bg-white/14")}
                           >
-                            <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-[14px]", isActive ? "bg-[#0b3d2c] text-white" : "bg-white/14 text-white")}>
-                              <Icon size={23} strokeWidth={1.7} />
-                            </span>
+                            <Icon size={19} strokeWidth={1.5} className={isActive ? "text-white" : "text-white/70"} />
                             <span className="min-w-0 flex-1">
-                              <span className="block text-[18px] leading-tight font-semibold tracking-[-0.01em]">{item.label}</span>
-                              <span className={cn("mt-0.5 block truncate text-[13px]", isActive ? "text-[#0b2a1f]/60" : "text-white/55")}>{item.hint}</span>
+                              <span className="block text-[16px] leading-tight font-medium">{item.label}</span>
+                              <span className="mt-0.5 block truncate text-[12px] text-white/45">{item.hint}</span>
                             </span>
-                            <ChevronRight size={18} className={isActive ? "text-[#0b2a1f]/40" : "text-white/35"} />
+                            {isActive ? <span className="h-1.5 w-1.5 rounded-full bg-[#4fd69c]" /> : <ChevronRight size={15} className="text-white/30" />}
                           </button>
                         </motion.li>
                       );

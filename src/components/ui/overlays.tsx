@@ -56,7 +56,7 @@ export function Modal({
           )}
           style={{ maxWidth: width }}
         >
-          <div className="flex items-start gap-4 border-b border-line/70 px-6 pt-5 pb-4">
+          <div className="flex items-start gap-4 border-b border-line/70 px-4 pt-5 pb-4 sm:px-6">
             <div className="min-w-0 flex-1">
               <Dialog.Title className="text-[18px] font-semibold tracking-[-0.015em] text-ink">{title}</Dialog.Title>
               {description ? <Dialog.Description className="mt-1 text-[13px] text-ink-2">{description}</Dialog.Description> : <Dialog.Description className="sr-only">Diálogo</Dialog.Description>}
@@ -66,8 +66,8 @@ export function Modal({
               <X size={18} />
             </Dialog.Close>
           </div>
-          <div className={cn("anim-content scroll-thin min-h-0 flex-1 overflow-y-auto px-6 py-5", bodyClassName)}>{children}</div>
-          {footer && <div className="flex flex-wrap items-center gap-2 border-t border-line/70 bg-surface-2/40 px-6 py-3.5">{footer}</div>}
+          <div className={cn("anim-content scroll-thin min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6", bodyClassName)}>{children}</div>
+          {footer && <div className="flex flex-wrap items-center gap-2 border-t border-line/70 bg-surface-2/40 px-4 py-3.5 sm:px-6">{footer}</div>}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

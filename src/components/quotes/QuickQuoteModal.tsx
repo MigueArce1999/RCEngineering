@@ -23,14 +23,14 @@ const defaultAdj = (): QuoteAdjustments => ({
   vat: { enabled: false, ratePct: 19 },
 });
 
-const inputCls = "h-10 w-full rounded-[12px] border border-line bg-white px-3 text-[14px] text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15";
+const inputCls = "h-12 w-full rounded-[12px] border border-line bg-white px-3.5 text-[16px] sm:h-10 sm:px-3 sm:text-[14px] text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/15";
 
 export function QuickQuoteModal() {
   const open = useUI((s) => s.quickQuoteOpen);
   const setOpen = useUI((s) => s.setQuickQuoteOpen);
   // Montar el formulario solo al abrir garantiza un estado limpio en cada cotización
   return (
-    <Modal open={open} onOpenChange={setOpen} title="Cotización rápida" description="Los valores se calculan automáticamente. Se guarda como borrador en este navegador." width={920} bodyClassName="p-0">
+    <Modal open={open} onOpenChange={setOpen} title="Cotización rápida" description="Se calcula solo y se guarda como borrador." width={920} bodyClassName="!p-0" className="max-sm:!top-0 max-sm:!left-0 max-sm:!h-[100dvh] max-sm:!max-h-none max-sm:!w-full max-sm:!max-w-none max-sm:!translate-x-0 max-sm:!translate-y-0 max-sm:!rounded-none">
       {open && <QuoteForm onDone={() => setOpen(false)} />}
     </Modal>
   );
@@ -89,7 +89,7 @@ function QuoteForm({ onDone }: { onDone: () => void }) {
 
   return (
     <>
-      <div className="grid gap-6 px-6 py-5 lg:grid-cols-[1fr_300px]">
+      <div className="grid gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[1fr_300px]">
         <div className="min-w-0 space-y-5">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Nombre del cliente" error={touched ? errors.client : ""}>
@@ -127,7 +127,7 @@ function QuoteForm({ onDone }: { onDone: () => void }) {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-0 lg:self-start">
-          <div className="rounded-[18px] bg-surface-2/70 p-4">
+          <div className="rounded-[18px] p-4 ring-1 ring-line">
             <p className="mb-3 text-[13px] font-semibold text-ink">Ajustes</p>
             <label className="flex items-center justify-between gap-3 text-[13px] text-ink-2">
               Descuento
@@ -164,14 +164,14 @@ function QuoteForm({ onDone }: { onDone: () => void }) {
           <QuoteTotals totals={totals} adj={adj} />
         </aside>
       </div>
-      <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-line/70 bg-white/90 px-6 py-3.5 backdrop-blur">
-        <span className="text-[12px] text-ink-3">{code}</span>
-        <div className="ml-auto flex gap-2">
-          <GlassButton variant="outline" icon={<Eye size={16} />} onClick={() => { setTouched(true); if (valid) setPreview(true); }}>
+      <div className="sticky bottom-0 border-t border-line/70 bg-white/95 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur sm:flex sm:items-center sm:px-6">
+        <span className="mb-2 block text-[12px] text-ink-3 sm:mb-0">{code}</span>
+        <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex">
+          <GlassButton variant="outline" size="lg" className="justify-center" icon={<Eye size={16} />} onClick={() => { setTouched(true); if (valid) setPreview(true); }}>
             Vista previa
           </GlassButton>
-          <GlassButton variant="primary" icon={<Save size={16} />} onClick={save}>
-            Guardar borrador
+          <GlassButton variant="primary" size="lg" className="justify-center" icon={<Save size={16} />} onClick={save}>
+            Guardar
           </GlassButton>
         </div>
       </div>
@@ -182,16 +182,15 @@ function QuoteForm({ onDone }: { onDone: () => void }) {
 export function QuoteItemRow({ item, index, onChange, onRemove }: { item: QuoteItem; index: number; onChange: (p: Partial<QuoteItem>) => void; onRemove?: () => void }) {
   const n = index + 1;
   return (
-    <li className="space-y-2 rounded-[16px] bg-surface-2/60 p-3">
+    <li className="space-y-2.5 rounded-[16px] bg-white p-3 ring-1 ring-line">
       <div className="flex items-center gap-2">
-        <span className="tabular w-5 shrink-0 text-center text-[12px] font-medium text-ink-3">{n}</span>
         <input className={inputCls} value={item.description} onChange={(e) => onChange({ description: e.target.value })} placeholder="Descripción del ítem" aria-label={`Descripción ítem ${n}`} />
         <button onClick={onRemove} disabled={!onRemove} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-3 transition hover:bg-danger-soft hover:text-danger disabled:opacity-30" aria-label={`Eliminar ítem ${n}`}>
           <Trash2 size={15} />
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-2 pl-7 sm:grid-cols-[1.25fr_1fr_0.8fr_1.2fr]">
-        <label className="text-[11px] text-ink-3">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-[1.25fr_1fr_0.8fr_1.2fr]">
+        <label className="text-[12px] text-ink-3">
           Categoría
           <Select size="md" className="mt-1 text-[13px]" label={`Categoría ítem ${n}`} value={item.category} onChange={(v) => onChange({ category: v as CostCategory })} options={(Object.keys(COST_CATEGORY_LABEL) as CostCategory[]).map((c) => ({ value: c, label: COST_CATEGORY_LABEL[c] }))} />
         </label>
@@ -208,7 +207,7 @@ export function QuoteItemRow({ item, index, onChange, onRemove }: { item: QuoteI
           <input className={cn(inputCls, "tabular mt-1 px-2")} type="number" min={0} step={100} value={item.unitPrice} onChange={(e) => onChange({ unitPrice: Math.max(0, Number(e.target.value)) })} aria-label={`Precio unitario ítem ${n}`} />
         </label>
       </div>
-      <p className="flex justify-end gap-2 pl-7 text-[12px] text-ink-2">
+      <p className="flex justify-between gap-2 border-t border-line/60 pt-2 text-[12px] text-ink-2">
         Subtotal <span className="tabular font-semibold text-ink">{formatCOP(itemSubtotal(item))}</span>
       </p>
     </li>
@@ -260,8 +259,8 @@ function QuotePreview(props: {
   const totals = quoteTotals(props.items, props.adj);
   return (
     <>
-      <div className="px-6 py-5">
-        <article className="mx-auto max-w-[720px] rounded-[18px] bg-white p-8 shadow-[var(--shadow-md)] ring-1 ring-line">
+      <div className="px-4 py-5 sm:px-6">
+        <article className="mx-auto max-w-[720px] overflow-x-auto rounded-[18px] bg-white p-5 sm:p-8 shadow-[var(--shadow-md)] ring-1 ring-line">
           <header className="flex items-start justify-between gap-6">
             <div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -314,7 +313,7 @@ function QuotePreview(props: {
           {props.notes && <p className="mt-4 text-[12px] text-ink-2">Observaciones: {props.notes}</p>}
         </article>
       </div>
-      <div className="sticky bottom-0 flex gap-2 border-t border-line/70 bg-white/90 px-6 py-3.5 backdrop-blur">
+      <div className="sticky bottom-0 flex gap-2 border-t border-line/70 bg-white/95 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur sm:px-6">
         <GlassButton variant="outline" icon={<Pencil size={16} />} onClick={props.onBack}>
           Editar
         </GlassButton>
