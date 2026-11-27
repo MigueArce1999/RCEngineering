@@ -329,7 +329,7 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
                     </button>
                     <button onClick={() => (setWins((v) => !v), send("win", !wins))} aria-pressed={wins} className={cn("mb-2 flex min-h-[56px] w-full items-center gap-3 rounded-[18px] px-4 text-left text-[14px] font-medium transition active:scale-[0.98]", wins ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink")}>
                       <DoorOpen size={20} strokeWidth={1.6} />
-                      <span className="flex-1">Abrir ventanas de alcoba y baño</span>
+                      <span className="flex-1">Abrir las ventanas de madera</span>
                       <span className={cn("grid h-5 w-5 place-items-center rounded-full", wins ? "bg-[#2ea06e]" : "ring-1 ring-black/20")}>{wins && <Check size={12} strokeWidth={3} />}</span>
                     </button>
                     <button onClick={() => (setCart((v) => !v), send("cart", !cart))} aria-pressed={cart} className={cn("mb-2 flex min-h-[56px] w-full items-center gap-3 rounded-[18px] px-4 text-left text-[14px] font-medium transition active:scale-[0.98]", cart ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink")}>
