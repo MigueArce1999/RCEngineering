@@ -73,6 +73,7 @@ const HOOK = `
   else if(c.type==='prev'){const b=document.getElementById('wPrev');if(b)b.click();}
   else if(c.type==='exitwalk'){const b=document.getElementById('wExit');if(b)b.click();try{W.keys.delete('shift');}catch(e){}}
   else if(c.type==='lamas')setLamas(!!c.arg);
+  else if(c.type==='cart'){if(window.__setCart)window.__setCart(!!c.arg);}
   else if(c.type==='mini')document.body.classList.toggle('mini-on');}
  function stopInfo(){try{const s=STOPS[W.stop];if(s)parent.postMessage({__rcStop:{n:W.stop,total:STOPS.length,title:s[0],text:s[1]}},'*');}catch(e){}}
  const wt=document.getElementById('wTitle');if(wt)new MutationObserver(stopInfo).observe(wt,{childList:true,characterData:true,subtree:true});

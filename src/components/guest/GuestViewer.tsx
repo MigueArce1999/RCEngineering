@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { AlignJustify, Box, Car, Check, ChevronLeft, ChevronRight, Layers, Map as MapIcon, Zap, CheckCircle2, Clock, DoorOpen, Droplets, FlipHorizontal2, Footprints, House, MessageSquarePlus, MousePointerClick, Plane, Send, SlidersHorizontal, Sofa, Sun, Tag, Tent, Waves, X, type LucideIcon } from "lucide-react";
+import { AlignJustify, Flower2, Box, Car, Check, ChevronLeft, ChevronRight, Layers, Map as MapIcon, Zap, CheckCircle2, Clock, DoorOpen, Droplets, FlipHorizontal2, Footprints, House, MessageSquarePlus, MousePointerClick, Plane, Send, SlidersHorizontal, Sofa, Sun, Tag, Tent, Waves, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { cn, formatDate } from "@/lib/format";
 import type { GuestComment, GuestPin } from "@/lib/guest";
@@ -83,6 +83,7 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
   const [menu, setMenu] = useState(false);
   const [roofOn, setRoofOn] = useState(true);
   const [lamas, setLamas] = useState(false);
+  const [cart, setCart] = useState(true);
   const [stop, setStop] = useState<ModelStop | null>(null);
   const [readOpen, setReadOpen] = useState(false);
   const [running, setRunning] = useState(false);
@@ -324,6 +325,11 @@ export function GuestViewer({ path, settings, load, onClose }: { path: string; s
                       <AlignJustify size={20} strokeWidth={1.6} />
                       <span className="flex-1">Lamas en las ventanas</span>
                       <span className={cn("grid h-5 w-5 place-items-center rounded-full", lamas ? "bg-[#2ea06e]" : "ring-1 ring-black/20")}>{lamas && <Check size={12} strokeWidth={3} />}</span>
+                    </button>
+                    <button onClick={() => (setCart((v) => !v), send("cart", !cart))} aria-pressed={cart} className={cn("mb-2 flex min-h-[56px] w-full items-center gap-3 rounded-[18px] px-4 text-left text-[14px] font-medium transition active:scale-[0.98]", cart ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink")}>
+                      <Flower2 size={20} strokeWidth={1.6} />
+                      <span className="flex-1">Cartagenera en los calados</span>
+                      <span className={cn("grid h-5 w-5 place-items-center rounded-full", cart ? "bg-[#2ea06e]" : "ring-1 ring-black/20")}>{cart && <Check size={12} strokeWidth={3} />}</span>
                     </button>
                     <button onClick={() => setLabels((v) => !v)} aria-pressed={labels} className={cn("flex min-h-[56px] w-full items-center gap-3 rounded-[18px] px-4 text-left text-[14px] font-medium transition active:scale-[0.98]", labels ? "bg-[#0f2a20] text-white" : "bg-[#eeebe3] text-ink")}>
                       <Tag size={20} strokeWidth={1.6} />

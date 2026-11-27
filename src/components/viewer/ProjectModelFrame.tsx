@@ -36,7 +36,7 @@ export interface ModelPick {
   sx: number;
   sy: number;
 }
-export type ModelCmd = { n: number; type: "view" | "fly" | "walk" | "roof" | "run" | "next" | "prev" | "exitwalk" | "mini" | "lamas" | "batch"; arg?: unknown };
+export type ModelCmd = { n: number; type: "view" | "fly" | "walk" | "roof" | "run" | "next" | "prev" | "exitwalk" | "mini" | "lamas" | "cart" | "batch"; arg?: unknown };
 export interface ModelStop {
   n: number;
   total: number;
