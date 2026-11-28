@@ -73,6 +73,7 @@ const HOOK = `
   else if(c.type==='prev'){const b=document.getElementById('wPrev');if(b)b.click();}
   else if(c.type==='exitwalk'){const b=document.getElementById('wExit');if(b)b.click();try{W.keys.delete('shift');}catch(e){}}
   else if(c.type==='lamas')setLamas(!!c.arg);
+  else if(c.type==='obra'){if(window.__setObra)window.__setObra(!!c.arg);}
   else if(c.type==='win'){if(window.__setWin)window.__setWin(!!c.arg);}
   else if(c.type==='cart'){if(window.__setCart)window.__setCart(!!c.arg);}
   else if(c.type==='mini')document.body.classList.toggle('mini-on');}
